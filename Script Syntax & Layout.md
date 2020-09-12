@@ -1,23 +1,23 @@
-// PARAMETERS.
+# PARAMETERS.
 
-// TO-DO LIST.
+## TO-DO LIST.
 
-// INITIALIZATION (Clearscreen, Steeringmanager, Terminal, etc.).
+### INITIALIZATION (Clearscreen, Steeringmanager, Terminal, etc.).
 
-// FUNCTIONS.
+FUNCTIONS.
 
-// VARIABLES.
-// Physical properties.
-// Scalars.
-// Vectors.
-// Geopositions.
-// Dependent variables.
-// System.
+VARIABLES.
+Physical properties.
+Scalars.
+Vectors.
+Geopositions.
+Dependent variables.
+System.
 
-// TERMINAL UI.
+TERMINAL UI.
 
-// STEERING CONTROL (rcs, sas, steeringCtrl, throttleCtrl, etc.).
+STEERING CONTROL (rcs, sas, steeringCtrl, throttleCtrl, etc.).
 
-// MAIN LOOP.
+MAIN LOOP.
 
-// RELEASE STEERING.
+RELEASE STEERING.
