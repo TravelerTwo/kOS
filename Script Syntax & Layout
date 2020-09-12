@@ -9,12 +9,12 @@ INITIALIZATION (Clearscreen, Steeringmanager, Terminal, etc.).
 FUNCTIONS.
 
 VARIABLES.
-- Physical properties.
--  Scalars.
-- Vectors.
-- Geopositions.
-- Dependent variables.
-- System.
+Physical properties.
+Scalars.
+Vectors.
+Geopositions.
+Dependent variables.
+System.
 
 PRINT TERMINAL UI.
 
