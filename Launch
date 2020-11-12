@@ -12,25 +12,24 @@ PARAMETER desiredInc IS 0.
 // Adapt burn_check to use next stage TWR after using whatever dV remains in current stage.
 
 CLEARSCREEN.
-SET config:ipu TO 400.
+SET config:ipu TO 500.
 SET steeringmanager:rollcontrolanglerange TO 180.
 SET steeringmanager:rolltorquefactor TO 0.5.
-SET terminal:height TO 22.
+SET terminal:height TO 20.
 SET terminal:width TO 40.
 
-FUNCTION burn_check {
-    LOCAL burnTime IS burnDv / max(0.0001, maxAccel).
+FUNCTION burn_dV {
+    LOCAL velApo IS velocityat(ship, time:seconds + eta:apoapsis):orbit:mag.
+    LOCAL velCirc IS sqrt(body:mu / (body:radius + apoapsis)).
+    RETURN velCirc - velApo.
+}
 
-    IF burnTime > desiredEta * 2 {
-        UNTIL burnTime < desiredEta * 2 OR maxthrustAtStage = 0 {
-            SET t TO t + 0.0001.
-            SET desiredEta TO body:atm:height * t * obt:eccentricity.
-            PRINT round(desiredEta,2) + "    " at(18,11).
-            PRINT round(burnTime,2) + "    " at(18,12).
-            PRINT round(t,4) + "      " at(18,13).
-            WAIT 0.
-        }
-    }
+FUNCTION desired_pitch {
+    LOCAL atmPitch IS desiredApo * (1 + p + ship:q).
+    LOCAL spdPitch IS body:atm:height * maxTwr.
+    LOCAL desiredSpeed IS sqrt(body:mu / (body:radius + spdPitch)).
+    LOCAL desiredPitch IS sqrt(apoapsis / atmPitch) + sqrt(groundspeed / desiredSpeed).
+    RETURN desiredPitch / 2 * 90.
 }
 
 FUNCTION launch_azimuth {
@@ -54,6 +53,7 @@ LOCAL g IS body:mu / body:position:sqrmagnitude.
 LOCAL p IS body:atm:altitudepressure(altitude).
 
 // VARIABLES.
+LOCAL burndV IS burn_dV().
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 LOCAL maxthrustAtStage IS ship:maxthrustat(0).
 LOCAL navAlt IS 100 + alt:radar.
@@ -62,23 +62,14 @@ LOCAL navYaw IS 90.
 LOCAL PIDApo IS PIDLoop(0.75, 1.15, 0.005, 0, 1).
 LOCAL pitchCraft IS vang(up:vector, facing:vector).
 LOCAL pitchOrbit IS vang(up:vector, velocity:orbit).
-LOCAL t IS 0.0001.
-LOCAL velApo IS velocityat(ship, time:seconds + eta:apoapsis):orbit:mag.
-LOCAL velCirc IS sqrt(body:mu / (body:radius + apoapsis)).
 
-LOCAL burnDv IS velCirc - velApo.
-LOCAL desiredEta IS body:atm:height * t * obt:eccentricity.
+LOCAL desiredEta IS burndV / max(0.0001, maxAccel) / 2.
 LOCAL maxTwr IS maxAccel / g.
 IF desiredInc = 180 { SET navYaw TO 270. }
 
-LOCAL atmPitch IS desiredApo * (1 + p + ship:q).
-LOCAL spdPitch IS body:atm:height * maxTwr.
-LOCAL desiredSpeed IS sqrt(body:mu / (body:radius + spdPitch)).
-LOCAL desiredPitch IS sqrt(apoapsis / atmPitch) + sqrt(groundspeed / desiredSpeed).
-
 // SYSTEM CONTROL.
 LOCAL modeCirc IS FALSE.
-LOCAL steeringCtrl IS facing:vector.
+LOCAL steeringCtrl IS lookdirup(facing:vector, facing:topvector).
 LOCAL throttleCtrl IS 1.
 
 PRINT " ".
@@ -92,13 +83,12 @@ PRINT " Relative inc   =".
 PRINT " Relative pitch =".
 PRINT "--------------------------".
 PRINT " ".
-PRINT " Burn at ETA    = 0".
-PRINT " Burn time      = 0".
-PRINT " Burn modifier  = " + t.
+PRINT " Burn at ETA    =".
+PRINT " Eccentricity   =".
 PRINT " ".
-PRINT " Relative apo   = 0".
-PRINT " Relative ETA   = 0".
-PRINT " Relative speed = 0".
+PRINT " Relative apo   =".
+PRINT " Relative ETA   =".
+PRINT " Relative speed =".
 PRINT "--------------------------".
 
 sas OFF.
@@ -111,11 +101,7 @@ UNTIL FALSE {
 
       IF NOT modeCirc {
 
-            SET atmPitch TO desiredApo * (1 + p + ship:q).
-            SET spdPitch TO body:atm:height * maxTwr.
-            SET desiredSpeed TO sqrt(body:mu / (body:radius + spdPitch)).
-            SET desiredPitch TO sqrt(apoapsis / atmPitch) + sqrt(groundspeed / desiredSpeed).
-            SET navPitch TO 90 - min(desiredPitch * 0.5 * 90, pitchOrbit).
+            SET navPitch TO 90 - min(desired_pitch(), pitchOrbit).
             SET throttleCtrl TO 1 - ship:q.
 
             IF apoapsis > desiredApo - 2500 {
@@ -125,18 +111,16 @@ UNTIL FALSE {
 
       } ELSE {
 
+            SET burndV TO burn_dV().
+            SET desiredEta TO burndV / max(0.0001, maxAccel) / 2.
             SET navPitch TO 90 - pitchOrbit.
-            SET desiredEta TO body:atm:height * t * obt:eccentricity.
             SET PIDApo:setpoint TO desiredEta + 1.
-            SET velApo TO velocityat(ship, time:seconds + eta:apoapsis):orbit:mag.
-            SET velCirc TO sqrt(body:mu / (body:radius + apoapsis)).
-            SET burnDv TO velCirc - velApo.
             SET throttleCtrl TO PIDApo:update(time:seconds, eta:apoapsis).
 
-            burn_check().
-
-            PRINT round(eta:apoapsis - desiredEta,2) + "s   " at(18,16).
-            PRINT round(burnDv,2) + "m/s   " at(18,17).
+            PRINT round(desiredEta,2) + "    " at(18,11).
+            PRINT round(obt:eccentricity,2) + "    " at(18,12).
+            PRINT round(eta:apoapsis - desiredEta,2) + "s   " at(18,15).
+            PRINT round(burndV,2) + "m/s   " at(18,16).
 
             IF burndV < 0.25 { BREAK. }
       }
@@ -146,17 +130,14 @@ UNTIL FALSE {
             stage.
             WAIT UNTIL stage:ready.
             SET maxthrustAtStage TO ship:maxthrustat(0).
-            SET t TO 0.0001.
       }
 
       IF desiredInc <> 0 {
             IF desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
       }
 
-      IF alt:radar < navAlt {
-            SET steeringCtrl TO lookdirup(up:vector, facing:topvector).
-
-      } ELSE { SET steeringCtrl TO heading(navYaw, navPitch). }
+      IF alt:radar > navAlt {  SET steeringCtrl TO heading(navYaw, navPitch).
+      } ELSE { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
 
       SET g TO body:mu / body:position:sqrmagnitude.
       SET p TO body:atm:altitudepressure(altitude).
@@ -170,10 +151,10 @@ UNTIL FALSE {
       PRINT round(maxTwr,2) + "    " at(18,2).
       PRINT round(p,3) + "     " at(18,3).
       PRINT round(ship:q,3) + "     " at(18,4).
-      PRINT round(throttle,2) + "    " at(18,5).
+      PRINT round(throttleCtrl,2) + "    " at(18,5).
       PRINT round(abs(desiredInc) - obt:inclination,2) + char(176) + "    " at(18,7).
       PRINT round(navPitch - pitchCraft,2) + char(176) + "    " at(18,8).
-      PRINT round(desiredApo - apoapsis) + "m " at(18,15).
+      PRINT round(desiredApo - apoapsis) + "m " at(18,14).
 
       WAIT 0.
 }
