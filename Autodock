@@ -1,6 +1,3 @@
-// Replace RCS_output(desiredVel) with desiredPos - 150 meters.
-// Perhaps add sexy tumble compensation.
-
 CLEARSCREEN.
 SET config:ipu TO 600.
 SET terminal:height TO 22.
