@@ -129,7 +129,7 @@ UNTIL NOT HASTARGET OR sas {
             SET dStar TO vdot_d(-target:facing:starvector).
             SET dTop TO vdot_d(-target:facing:topvector).
             SET dFore TO vdot_d(-target:facing:vector).
-            SET offsetPos TO desiredPos.
+            SET offsetPos TO desiredPos:vec.
             SET offsetPos:mag TO offsetPos:mag - max(10, min(desiredPos:mag, 150)).
             SET steeringCtrl TO desiredPos.
 
@@ -168,7 +168,7 @@ UNTIL NOT HASTARGET OR sas {
             SET offsetTop TO -target:facing:topvector * lex_axis["TOP"].
             SET offsetFore TO -target:facing:vector * lex_axis["FORE"].
             SET offsetPos TO offsetTop + offsetStar + offsetFore.
-            SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector).
+            SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector):vector.
 
             new_parameter().
             RCS_output(desiredPos - offsetPos).
@@ -195,7 +195,6 @@ UNTIL NOT HASTARGET OR sas {
       WAIT 0.
 }
 
-clearvecdraws().
 SET ship:control:neutralize TO TRUE.
 steeringmanager:resettodefault().
 UNLOCK ALL.
