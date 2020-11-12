@@ -1,0 +1,205 @@
+// Replace RCS_output(desiredVel) with desiredPos - 150 meters.
+// Perhaps add sexy tumble compensation.
+
+CLEARSCREEN.
+SET config:ipu TO 600.
+SET terminal:height TO 22.
+SET terminal:width TO 40.
+SET steeringmanager:rollcontrolanglerange TO 90.
+
+IF NOT HASTARGET { PRINT "Select target..." at(0,0). }
+WAIT UNTIL HASTARGET.
+
+FUNCTION new_parameter {
+    IF terminal:input:haschar {
+        LOCAL char IS terminal:input:getchar().
+
+        IF list_num:contains(char) {
+            SET input TO input + char.
+            PRINT input at(15,8).
+
+        } ELSE IF char = terminal:input:backspace {
+            SET input TO "".
+            PRINT "       " at(15,8).
+
+        } ELSE IF char = terminal:input:upcursorone {
+            PRINT "  " at(2,9 + i).
+            SET i TO i - 1.
+            IF i < 0 { SET i TO 2. }
+
+        } ELSE IF char = terminal:input:downcursorone {
+            PRINT "  " at(2,9 + i).
+            SET i TO i + 1.
+            IF i > 2 { SET i TO 0. }
+
+        } ELSE IF char = terminal:input:enter {
+            IF input <> "" { SET lex_axis[list_axis[i]] TO input:toscalar. }
+            SET input TO "".
+            PRINT "       " at(15,8).
+            RETURN lex_axis[list_axis[i]].
+        }
+
+    PRINT ">>" at(2,9 + i).
+    }
+}
+
+FUNCTION RCS_output {
+    PARAMETER vec.
+
+    IF target:istype("vessel") {
+        SET desiredAng TO target:angularvel - ship:angularvel.
+        SET desiredPos TO target:position.
+        SET desiredVel TO target:velocity:orbit - velocity:orbit.
+
+    } ELSE IF target:istype("part") {
+        SET desiredAng TO target:ship:angularvel - ship:angularvel.
+        SET desiredVel TO target:ship:velocity:orbit - velocity:orbit.
+
+        IF NOT ship:controlpart:targetable { SET desiredPos TO target:nodeposition.
+        } ELSE { SET desiredPos TO target:nodeposition - ship:controlpart:nodeposition. }
+    }
+
+    LOCAL RCSAccel IS 1 / ship:mass.
+    LOCAL RCSSpeed IS sqrt(max(0, 2 * vec:mag * RCSAccel)).
+    LOCAL RCSVel IS RCSSpeed * vec:normalized.
+    LOCAL diffVel IS RCSVel + desiredVel.
+    LOCAL output IS diffVel / RCSAccel.
+
+    LOCAL star_vec IS vdot(facing:starvector, output).
+    LOCAL top_vec IS vdot(facing:topvector, output).
+    LOCAL fore_vec IS vdot(facing:forevector, output).
+
+    SET ship:control:translation TO v(star_vec, top_vec, fore_vec).
+}
+
+FUNCTION vdot_d {
+    PARAMETER vec.
+    RETURN vdot(vec, desiredPos).
+}
+
+// LISTS.
+LOCAL lex_axis IS lex("STAR", 0, "TOP", 0, "FORE", 0).
+LOCAL list_axis IS list("STAR", "TOP", "FORE").
+LOCAL list_num IS list("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", ".").
+
+// VARIABLES.
+LOCAL desiredAng IS facing:vector.
+LOCAL desiredPos IS facing:vector.
+LOCAL desiredVel IS facing:vector.
+
+LOCAL dStar IS 0.
+LOCAL dTop IS 0.
+LOCAL dFore IS 0.
+
+LOCAL offsetStar IS facing:vector.
+LOCAL offsetTop IS facing:vector.
+LOCAL offsetFore IS facing:vector.
+LOCAL offsetPos IS offsetTop + offsetStar + offsetFore.
+
+// SYSTEM CONTROL.
+LOCAL modeDock IS FALSE.
+LOCAL i IS 0.
+LOCAL input IS "".
+LOCAL steeringCtrl IS facing:vector.
+
+PRINT "                          ".
+PRINT " Angle".
+PRINT "     YAW     =".
+PRINT "     PITCH   =".
+PRINT "     ROLL    =".
+PRINT " VELOCITY    =".
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Distance".
+PRINT "     STAR    =".
+PRINT "     TOP     =".
+PRINT "     FORE    =".
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Range       =".
+PRINT " Range rate  =".
+PRINT " Status      = Approaching target".
+PRINT "--------------------------".
+
+rcs ON.
+sas OFF.
+LOCK steering TO steeringCtrl.
+
+UNTIL NOT HASTARGET OR sas {
+
+      IF NOT modeDock {
+
+            SET dStar TO vdot_d(-target:facing:starvector).
+            SET dTop TO vdot_d(-target:facing:topvector).
+            SET dFore TO vdot_d(-target:facing:vector).
+            SET offsetPos TO desiredPos.
+            SET offsetPos:mag TO offsetPos:mag - max(10, min(desiredPos:mag, 150)).
+            SET steeringCtrl TO desiredPos.
+
+            RCS_output(offsetPos).
+
+            PRINT round(dStar,2) + "m    " at(15,9).
+            PRINT round(dTop,2) + "m    " at(15,10).
+            PRINT round(dFore,2) + "m    " at(15,11).
+
+            IF rcs AND desiredVel:mag < 0.02 {
+                  rcs OFF.
+                  PRINT "Set control/target ports" at(15,16).
+
+            } ELSE IF NOT rcs AND desiredVel:mag > 0.2 {
+                  rcs ON.
+                  PRINT "Killing velocity        " at(15,16).
+            }
+
+            IF target:istype("part") AND ship:controlpart:targetable {
+                  SET dStar TO vdot_d(-target:facing:starvector).
+                  SET dTop TO vdot_d(-target:facing:topvector).
+                  SET dFore TO vdot_d(-target:facing:vector).
+                  SET lex_axis["STAR"] TO dStar.
+                  SET lex_axis["TOP"] TO dTop.
+                  SET lex_axis["FORE"] TO dFore.
+                  SET modeDock TO TRUE.
+                  rcs ON.
+                  PRINT ">>" at(2,9).
+                  PRINT "New target  =" at(1,8).
+                  PRINT "Manual distance control " at(15,16).
+            }
+
+      } ELSE IF modeDock {
+
+            SET offsetStar TO -target:facing:starvector * lex_axis["STAR"].
+            SET offsetTop TO -target:facing:topvector * lex_axis["TOP"].
+            SET offsetFore TO -target:facing:vector * lex_axis["FORE"].
+            SET offsetPos TO offsetTop + offsetStar + offsetFore.
+            SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector).
+
+            new_parameter().
+            RCS_output(desiredPos - offsetPos).
+
+            PRINT round(lex_axis["STAR"],2) + "m      " at(15,9).
+            PRINT round(lex_axis["TOP"],2) + "m      " at(15,10).
+            PRINT round(lex_axis["FORE"],2) + "m      " at(15,11).
+
+            IF NOT target:istype("part") OR NOT ship:controlpart:targetable {
+                  SET modeDock TO FALSE.
+                  PRINT "Distance     " at(1,8).
+                  PRINT "  " at(2,9 + i).
+                  PRINT "Approaching target      " at(15,16).
+            }
+      }
+
+      PRINT round(vang(facing:topvector, target:facing:topvector),1) + char(176) + "   " at(15,2).
+      PRINT round(vang(facing:vector, -target:facing:vector),1) + char(176) + "   " at(15,3).
+      PRINT round(vang(facing:starvector, -target:facing:starvector),1) + char(176) + "   " at(15,4).
+      PRINT round(desiredAng:mag * constant:radtodeg,1) + char(176) + "/s  " at(15,5).
+      PRINT round(desiredPos:mag,2) + "m    " at(15,14).
+      PRINT round(desiredVel:mag,2) + "m/s    " at(15,15).
+
+      WAIT 0.
+}
+
+clearvecdraws().
+SET ship:control:neutralize TO TRUE.
+steeringmanager:resettodefault().
+UNLOCK ALL.
+rcs OFF.
