@@ -80,14 +80,13 @@ LOCAL list_axis IS list("STAR", "TOP", "FORE").
 LOCAL list_num IS list("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", ".").
 
 // VARIABLES.
+LOCAL dStar IS 0.
+LOCAL dTop IS 0.
+LOCAL dFore IS 0. 
+
 LOCAL desiredAng IS facing:vector.
 LOCAL desiredPos IS facing:vector.
 LOCAL desiredVel IS facing:vector.
-
-LOCAL dStar IS 0.
-LOCAL dTop IS 0.
-LOCAL dFore IS 0.
-
 LOCAL offsetStar IS facing:vector.
 LOCAL offsetTop IS facing:vector.
 LOCAL offsetFore IS facing:vector.
