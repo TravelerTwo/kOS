@@ -152,9 +152,9 @@ UNTIL FALSE {
       PRINT round(p,3) + "     " at(18,3).
       PRINT round(ship:q,3) + "     " at(18,4).
       PRINT round(throttleCtrl,2) + "    " at(18,5).
-      PRINT round(abs(desiredInc) - obt:inclination,2) + char(176) + "    " at(18,7).
-      PRINT round(navPitch - pitchCraft,2) + char(176) + "    " at(18,8).
-      PRINT round(desiredApo - apoapsis) + "m " at(18,14).
+      PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,7).
+      PRINT round(navPitch - pitchCraft,2) + "    " at(18,8).
+      PRINT round(desiredApo - apoapsis) + "  " at(18,14).
 
       WAIT 0.
 }
