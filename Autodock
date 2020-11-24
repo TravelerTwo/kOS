@@ -33,7 +33,6 @@ FUNCTION new_parameter {
             IF input <> "" { SET lex_axis[list_axis[i]] TO input:toscalar. }
             SET input TO "".
             PRINT "       " at(15,8).
-            RETURN lex_axis[list_axis[i]].
         }
 
     PRINT ">>" at(2,9 + i).
@@ -52,8 +51,8 @@ FUNCTION RCS_output {
         SET desiredAng TO target:ship:angularvel - ship:angularvel.
         SET desiredVel TO target:ship:velocity:orbit - velocity:orbit.
 
-        IF NOT ship:controlpart:targetable { SET desiredPos TO target:nodeposition.
-        } ELSE { SET desiredPos TO target:nodeposition - ship:controlpart:nodeposition. }
+        IF NOT ship:controlpart:targetable { SET desiredPos TO target:nodeposition. }
+        ELSE { SET desiredPos TO target:nodeposition - ship:controlpart:nodeposition. }
     }
 
     LOCAL RCSAccel IS 1 / ship:mass.
@@ -134,9 +133,9 @@ UNTIL NOT HASTARGET OR sas {
 
             RCS_output(offsetPos).
 
-            PRINT round(dStar,2) + "m    " at(15,9).
-            PRINT round(dTop,2) + "m    " at(15,10).
-            PRINT round(dFore,2) + "m    " at(15,11).
+            PRINT round(dStar,2) + "    " at(15,9).
+            PRINT round(dTop,2) + "    " at(15,10).
+            PRINT round(dFore,2) + "    " at(15,11).
 
             IF rcs AND desiredVel:mag < 0.02 {
                   rcs OFF.
@@ -144,7 +143,7 @@ UNTIL NOT HASTARGET OR sas {
 
             } ELSE IF NOT rcs AND desiredVel:mag > 0.2 {
                   rcs ON.
-                  PRINT "Killing velocity        " at(15,16).
+                  PRINT "Moving to wait position " at(15,16).
             }
 
             IF target:istype("part") AND ship:controlpart:targetable {
@@ -172,9 +171,9 @@ UNTIL NOT HASTARGET OR sas {
             new_parameter().
             RCS_output(desiredPos - offsetPos).
 
-            PRINT round(lex_axis["STAR"],2) + "m      " at(15,9).
-            PRINT round(lex_axis["TOP"],2) + "m      " at(15,10).
-            PRINT round(lex_axis["FORE"],2) + "m      " at(15,11).
+            PRINT round(lex_axis["STAR"],2) + "      " at(15,9).
+            PRINT round(lex_axis["TOP"],2) + "      " at(15,10).
+            PRINT round(lex_axis["FORE"],2) + "      " at(15,11).
 
             IF NOT target:istype("part") OR NOT ship:controlpart:targetable {
                   SET modeDock TO FALSE.
@@ -184,12 +183,12 @@ UNTIL NOT HASTARGET OR sas {
             }
       }
 
-      PRINT round(vang(facing:topvector, target:facing:topvector),1) + char(176) + "   " at(15,2).
-      PRINT round(vang(facing:vector, -target:facing:vector),1) + char(176) + "   " at(15,3).
-      PRINT round(vang(facing:starvector, -target:facing:starvector),1) + char(176) + "   " at(15,4).
-      PRINT round(desiredAng:mag * constant:radtodeg,1) + char(176) + "/s  " at(15,5).
-      PRINT round(desiredPos:mag,2) + "m    " at(15,14).
-      PRINT round(desiredVel:mag,2) + "m/s    " at(15,15).
+      PRINT round(vang(facing:topvector, target:facing:topvector),1) + "   " at(15,2).
+      PRINT round(vang(facing:starvector, -target:facing:starvector),1) + "   " at(15,3).
+      PRINT round(vang(facing:vector, -target:facing:vector),1) + "   " at(15,4).
+      PRINT round(desiredAng:mag * constant:radtodeg,1) + "   " at(15,5).
+      PRINT round(desiredPos:mag,2) + "    " at(15,14).
+      PRINT round(desiredVel:mag,2) + "    " at(15,15).
 
       WAIT 0.
 }
