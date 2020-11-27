@@ -134,9 +134,9 @@ UNTIL NOT HASTARGET OR sas {
 
             RCS_output(offsetPos).
 
-            PRINT round(dStar,1) + "   " at(15,9).
-            PRINT round(dTop,1) + "   " at(15,10).
-            PRINT round(dFore,1) + "   " at(15,11).
+            PRINT round(dStar) + "  " at(15,9).
+            PRINT round(dTop) + "  " at(15,10).
+            PRINT round(dFore) + "  " at(15,11).
 
             IF desiredVel:mag < 0.02 AND desiredPos:mag < 200 AND rcs {
                   rcs OFF.
@@ -164,14 +164,14 @@ UNTIL NOT HASTARGET OR sas {
             SET offsetTop TO -target:facing:topvector * lex_axis["TOP"].
             SET offsetFore TO -target:facing:vector * lex_axis["FORE"].
             SET offsetPos TO offsetTop + offsetStar + offsetFore.
-            SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector):vector.
+            SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector).
 
             new_parameter().
             RCS_output(desiredPos - offsetPos).
 
-            PRINT round(lex_axis["STAR"],1) + "     " at(15,9).
-            PRINT round(lex_axis["TOP"],1) + "     " at(15,10).
-            PRINT round(lex_axis["FORE"],1) + "     " at(15,11).
+            PRINT round(lex_axis["STAR"],2) + "    " at(15,9).
+            PRINT round(lex_axis["TOP"],2) + "    " at(15,10).
+            PRINT round(lex_axis["FORE"],2) + "    " at(15,11).
 
             IF NOT target:istype("part") OR NOT ship:controlpart:targetable {
                   SET modeDock TO FALSE.
@@ -181,9 +181,9 @@ UNTIL NOT HASTARGET OR sas {
             }
       }
 
-      PRINT round(vang(facing:topvector, target:facing:topvector),2) + "    " at(15,2).
-      PRINT round(vang(facing:starvector, target:facing:starvector),2) + "    " at(15,3).
-      PRINT round(vang(facing:vector, -target:facing:vector),2) + "    " at(15,4).
+      PRINT round(vang(facing:starvector, target:facing:starvector),2) + "    " at(15,2).
+      PRINT round(vang(facing:vector, -target:facing:vector),2) + "    " at(15,3).
+      PRINT round(vang(facing:topvector, target:facing:topvector),2) + "    " at(15,4).
       PRINT round(desiredAng:mag * constant:radtodeg,2) + "    " at(15,5).
       PRINT round(desiredPos:mag) + "  " at(15,14).
       PRINT round(desiredVel:mag,2) + "    " at(15,15).
