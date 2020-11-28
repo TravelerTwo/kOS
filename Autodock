@@ -35,7 +35,7 @@ FUNCTION new_parameter {
             PRINT "       " at(15,8).
         }
 
-    PRINT ">>" at(2,9 + i).
+        PRINT ">>" at(2,9 + i).
     }
 }
 
