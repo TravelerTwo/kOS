@@ -61,11 +61,11 @@ FUNCTION RCS_output {
     LOCAL diffVel IS RCSVel + desiredVel.
     LOCAL output IS diffVel / RCSAccel.
 
-    LOCAL star_vec IS vdot(facing:starvector, output).
-    LOCAL top_vec IS vdot(facing:topvector, output).
-    LOCAL fore_vec IS vdot(facing:forevector, output).
+    LOCAL x_star IS vdot(facing:starvector, output).
+    LOCAL y_top IS vdot(facing:topvector, output).
+    LOCAL z_fore IS vdot(facing:forevector, output).
 
-    SET ship:control:translation TO v(star_vec, top_vec, fore_vec).
+    SET ship:control:translation TO v(x_star, y_top, z_fore).
 }
 
 FUNCTION vdot_d {
@@ -74,8 +74,8 @@ FUNCTION vdot_d {
 }
 
 // LISTS.
-LOCAL lex_axis IS lex("STAR", 0, "TOP", 0, "FORE", 0).
-LOCAL list_axis IS list("STAR", "TOP", "FORE").
+LOCAL lex_axis IS lex("FORE", 0, "STAR", 0, "TOP", 0).
+LOCAL list_axis IS list("FORE", "STAR", "TOP").
 LOCAL list_num IS list("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", ".").
 
 // VARIABLES.
@@ -86,10 +86,10 @@ LOCAL dFore IS 0.
 LOCAL desiredAng IS facing:vector.
 LOCAL desiredPos IS facing:vector.
 LOCAL desiredVel IS facing:vector.
+LOCAL offsetFore IS facing:vector.
 LOCAL offsetStar IS facing:vector.
 LOCAL offsetTop IS facing:vector.
-LOCAL offsetFore IS facing:vector.
-LOCAL offsetPos IS offsetTop + offsetStar + offsetFore.
+LOCAL offsetPos IS offsetFore + offsetStar + offsetTop.
 
 // SYSTEM CONTROL.
 LOCAL modeDock IS FALSE.
@@ -99,16 +99,16 @@ LOCAL steeringCtrl IS facing:vector.
 
 PRINT "                          ".
 PRINT " Angle".
-PRINT "     YAW     =".
 PRINT "     PITCH   =".
+PRINT "     YAW     =".
 PRINT "     ROLL    =".
 PRINT " VELOCITY    =".
 PRINT "--------------------------".
 PRINT " ".
 PRINT " Distance".
+PRINT "     FORE    =".
 PRINT "     STAR    =".
 PRINT "     TOP     =".
-PRINT "     FORE    =".
 PRINT "--------------------------".
 PRINT " ".
 PRINT " Range       =".
@@ -125,18 +125,18 @@ UNTIL NOT HASTARGET OR sas {
 
       IF NOT modeDock {
 
+            SET dFore TO vdot_d(-target:facing:vector).
             SET dStar TO vdot_d(-target:facing:starvector).
             SET dTop TO vdot_d(-target:facing:topvector).
-            SET dFore TO vdot_d(-target:facing:vector).
             SET offsetPos TO desiredPos:vec.
             SET offsetPos:mag TO offsetPos:mag - max(10, min(desiredPos:mag, 150)).
             SET steeringCtrl TO desiredPos.
 
             RCS_output(offsetPos).
 
-            PRINT round(dStar) + "  " at(15,9).
-            PRINT round(dTop) + "  " at(15,10).
-            PRINT round(dFore) + "  " at(15,11).
+            PRINT round(dFore) + "  " at(15,9).
+            PRINT round(dStar) + "  " at(15,10).
+            PRINT round(dTop) + "  " at(15,11).
 
             IF desiredVel:mag < 0.02 AND desiredPos:mag < 200 AND rcs {
                   rcs OFF.
@@ -160,18 +160,18 @@ UNTIL NOT HASTARGET OR sas {
 
       } ELSE IF modeDock {
 
+            SET offsetFore TO -target:facing:vector * lex_axis["FORE"].
             SET offsetStar TO -target:facing:starvector * lex_axis["STAR"].
             SET offsetTop TO -target:facing:topvector * lex_axis["TOP"].
-            SET offsetFore TO -target:facing:vector * lex_axis["FORE"].
-            SET offsetPos TO offsetTop + offsetStar + offsetFore.
+            SET offsetPos TO offsetFore + offsetStar + offsetTop.
             SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector).
 
             new_parameter().
             RCS_output(desiredPos - offsetPos).
 
-            PRINT round(lex_axis["STAR"],2) + "    " at(15,9).
-            PRINT round(lex_axis["TOP"],2) + "    " at(15,10).
-            PRINT round(lex_axis["FORE"],2) + "    " at(15,11).
+            PRINT round(lex_axis["FORE"],2) + "    " at(15,9).
+            PRINT round(lex_axis["STAR"],2) + "    " at(15,10).
+            PRINT round(lex_axis["TOP"],2) + "    " at(15,11).
 
             IF NOT target:istype("part") OR NOT ship:controlpart:targetable {
                   SET modeDock TO FALSE.
@@ -181,8 +181,8 @@ UNTIL NOT HASTARGET OR sas {
             }
       }
 
-      PRINT round(vang(facing:starvector, target:facing:starvector),2) + "    " at(15,2).
-      PRINT round(vang(facing:vector, -target:facing:vector),2) + "    " at(15,3).
+      PRINT round(vang(facing:vector, -target:facing:vector),2) + "    " at(15,2).
+      PRINT round(vang(facing:starvector, target:facing:starvector),2) + "    " at(15,3).
       PRINT round(vang(facing:topvector, target:facing:topvector),2) + "    " at(15,4).
       PRINT round(desiredAng:mag * constant:radtodeg,2) + "    " at(15,5).
       PRINT round(desiredPos:mag) + "  " at(15,14).
