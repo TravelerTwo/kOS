@@ -97,7 +97,7 @@ brakes OFF.
 LOCK steering TO steeringCtrl.
 LOCK throttle TO throttleCtrl.
 
-UNTIL FALSE {
+UNTIL FALSE OR sas {
 
       IF NOT modeCirc {
 
