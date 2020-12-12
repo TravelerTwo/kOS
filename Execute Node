@@ -1,0 +1,83 @@
+CLEARSCREEN.
+SET config:ipu TO 400.
+SET terminal:height TO 20.
+SET terminal:width TO 40.
+
+FUNCTION burn_time {
+    LOCAL burnFlow IS ship:availablethrust / (ispTotal * 9.80665).
+    LOCAL burnMass IS ship:mass / constant():e^(nextnode:deltav:mag / (ispTotal * 9.80665)).
+    RETURN (ship:mass - burnMass) / burnFlow.
+}
+
+// LISTS.
+LIST ENGINES IN elist.
+
+// VARIABLES.
+LOCAL burnTime IS 0.
+LOCAL ispTotal IS 0.
+LOCAL maxAccel IS ship:availablethrust / ship:mass.
+LOCAL nodeBurn IS nextnode:burnvector.
+LOCAL nodeTime IS 0.
+LOCAL nodeVdot IS vdot(nodeBurn, nextnode:burnvector).
+
+FOR e IN elist {
+    IF e:ignition AND e:flameout { e:shutdown(). }
+    SET ispTotal TO ispTotal + e:maxthrust / ship:maxthrust * e:isp.
+}
+
+// SYSTEM CONTROL.
+LOCAL modeBurn IS FALSE.
+LOCAL steeringCtrl IS lookdirup(nextnode:burnvector, facing:topvector).
+LOCAL throttleCtrl IS 0.
+
+PRINT " ".
+PRINT " ISP           = " + round(ispTotal).
+PRINT " Burn time     =".
+PRINT " Half time     =".
+PRINT " Node ETA      =".
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Node angle    =".
+PRINT " Node delta-V  =".
+PRINT " Node Vdot     =".
+PRINT "--------------------------".
+
+rcs OFF.
+sas OFF.
+LOCK steering TO steeringCtrl.
+LOCK throttle TO throttleCtrl.
+
+UNTIL FALSE OR sas {
+
+      IF NOT modeBurn {
+
+            IF nextnode:eta <= nodeTime { SET modeBurn TO TRUE. }
+
+      } ELSE {
+
+            SET throttleCtrl TO min(1, nextnode:deltav:mag / maxAccel).
+
+            IF nextnode:deltav:mag < 0.001 OR nodeVdot < 0.999 { BREAK. }
+
+      }
+
+      SET burnTime TO burn_time().
+      SET maxAccel TO ship:availablethrust / ship:mass.
+      SET nodeTime TO burnTime * 0.5.
+      SET nodeVdot TO vdot(nodeBurn, nextnode:burnvector).
+      SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector).
+
+      PRINT round(burnTime,1) + "    "  at(17,2).
+      PRINT round(nodeTime,1) + "    " at(17,3).
+      PRINT round(nextnode:eta,1) + "    " at(17,4).
+      PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
+      PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
+      PRINT round(nodeVdot,3) + "      " at(17,9).
+
+      WAIT 0.
+}
+
+SET ship:control:pilotmainthrottle TO 0.
+SET throttleCtrl TO 0.
+UNLOCK ALL.
+sas ON.
