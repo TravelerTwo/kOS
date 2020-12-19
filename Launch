@@ -119,8 +119,8 @@ UNTIL FALSE OR sas {
 
             PRINT round(desiredEta,2) + "    " at(18,11).
             PRINT round(obt:eccentricity,2) + "    " at(18,12).
-            PRINT round(eta:apoapsis - desiredEta,2) + "s   " at(18,15).
-            PRINT round(burndV,2) + "m/s   " at(18,16).
+            PRINT round(eta:apoapsis - desiredEta,2) + "    " at(18,15).
+            PRINT round(burndV,2) + "    " at(18,16).
 
             IF burndV < 0.25 { BREAK. }
       }
