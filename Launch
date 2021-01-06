@@ -4,6 +4,7 @@ PARAMETER desiredInc IS 0.
 // TO-DO.
 // Retrograde launch, pitch isn't perfect, but it's working.
 // Very low TWR upper stages might need something to help them pitch up to compensate for lack of thrust.
+// Azimuth function crashes if desiredInc < ship:latitude.
 
 // ON HOLD UNTIL STAGE:MASS AND ENGINE:FUELTYPE OR EQUIVALENTS.
 // Calculate stage delta-v.
@@ -36,11 +37,11 @@ FUNCTION launch_azimuth {
     PARAMETER inc.
 
     LOCAL V_orb IS max(sqrt(body:mu / body:position:mag), velocity:orbit:mag + 1).
-    LOCAL az_orb IS arcsin(cos(inc) / cos(latitude)).
+    LOCAL az_orb IS arcsin(cos(inc) / cos(ship:latitude)).
     IF inc < 0 { SET az_orb TO 180 - az_orb. }
 
     LOCAL V_star IS heading(az_orb, 0) * v(0, 0, V_orb).
-    LOCAL V_ship_h IS velocity:orbit - vdot(velocity:orbit, up:vector) * up:vector.
+    LOCAL V_ship_h IS vxcl(up:vector, velocity:orbit).
     LOCAL V_corr IS V_star - V_ship_h.
     LOCAL vel_n IS vdot(V_corr, north:vector).
     LOCAL vel_e IS vdot(V_corr, heading(90, 0):vector).
@@ -65,6 +66,7 @@ LOCAL pitchOrbit IS vang(up:vector, velocity:orbit).
 
 LOCAL desiredEta IS burndV / max(0.0001, maxAccel) / 2.
 LOCAL maxTwr IS maxAccel / g.
+IF desiredApo < body:atm:height { SET desiredApo TO body:atm:height + 10000. }
 IF desiredInc = 180 { SET navYaw TO 270. }
 
 // SYSTEM CONTROL.
