@@ -169,9 +169,9 @@ UNTIL NOT HASTARGET OR sas {
             new_parameter().
             RCS_output(desiredPos - offsetPos).
 
-            PRINT round(lex_axis["FORE"],2) + "    " at(15,9).
-            PRINT round(lex_axis["STAR"],2) + "    " at(15,10).
-            PRINT round(lex_axis["TOP"],2) + "    " at(15,11).
+            PRINT round(lex_axis["FORE"],2) + "      " at(15,9).
+            PRINT round(lex_axis["STAR"],2) + "      " at(15,10).
+            PRINT round(lex_axis["TOP"],2) + "      " at(15,11).
 
             IF NOT target:istype("part") OR NOT ship:controlpart:targetable {
                   SET modeDock TO FALSE.
