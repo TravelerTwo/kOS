@@ -27,10 +27,11 @@ FUNCTION burn_dV {
 
 FUNCTION desired_pitch {
     LOCAL atmPitch IS desiredApo * (1 + p + ship:q).
-    LOCAL spdPitch IS body:atm:height * maxTwr.
-    LOCAL desiredSpeed IS sqrt(body:mu / (body:radius + spdPitch)).
-    LOCAL desiredPitch IS sqrt(apoapsis / atmPitch) + sqrt(groundspeed / desiredSpeed).
-    RETURN desiredPitch / 2 * 90.
+    // LOCAL spdPitch IS body:atm:height * maxTwr.
+    // LOCAL desiredSpeed IS sqrt(body:mu / (body:radius + spdPitch)).
+    // LOCAL desiredPitch IS sqrt(apoapsis / atmPitch) + sqrt(groundspeed / desiredSpeed).
+    // RETURN desiredPitch / 2 * 90.
+    RETURN sqrt(apoapsis / atmPitch) * 90.
 }
 
 FUNCTION launch_azimuth {
