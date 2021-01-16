@@ -106,7 +106,7 @@ UNTIL FALSE OR sas {
       IF NOT modeCirc {
 
             SET navPitch TO 90 - min(desired_pitch(), pitchOrbit).
-            SET throttleCtrl TO 1 - ship:q.
+            SET throttleCtrl TO 1 - ship:q^2.
 
             IF apoapsis > desiredApo - 2500 {
                   SET modeCirc TO TRUE.
