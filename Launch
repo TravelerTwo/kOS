@@ -27,11 +27,10 @@ FUNCTION burn_dV {
 
 FUNCTION desired_pitch {
     LOCAL atmPitch IS desiredApo * (1 + p + ship:q).
-    // LOCAL spdPitch IS body:atm:height * maxTwr.
-    // LOCAL desiredSpeed IS sqrt(body:mu / (body:radius + spdPitch)).
-    // LOCAL desiredPitch IS sqrt(apoapsis / atmPitch) + sqrt(groundspeed / desiredSpeed).
-    // RETURN desiredPitch / 2 * 90.
-    RETURN sqrt(apoapsis / atmPitch) * 90.
+    LOCAL spdPitch IS body:atm:height * maxTwr.
+    LOCAL desiredSpeed IS sqrt(body:mu / (body:radius + spdPitch)).
+    LOCAL desiredPitch IS sqrt(apoapsis / atmPitch) + sqrt(groundspeed / desiredSpeed).
+    RETURN desiredPitch / 2 * 90.
 }
 
 FUNCTION launch_azimuth {
@@ -68,8 +67,9 @@ LOCAL pitchOrbit IS vang(up:vector, velocity:orbit).
 LOCAL desiredEta IS burndV / max(0.0001, maxAccel) / 2.
 LOCAL maxTwr IS maxAccel / g.
 IF desiredApo < body:atm:height { SET desiredApo TO body:atm:height + 10000. }
+IF abs(desiredInc) > 180 - abs(ship:latitude) { SET desiredInc TO 180. }
+  ELSE IF abs(desiredInc) < abs(ship:latitude) { SET desiredInc TO 0. }
 IF desiredInc = 180 { SET navYaw TO 270. }
-IF abs(desiredInc) < abs(ship:latitude) { SET desiredInc TO 0. }
 
 // SYSTEM CONTROL.
 LOCAL modeCirc IS FALSE.
