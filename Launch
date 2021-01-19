@@ -4,7 +4,6 @@ PARAMETER desiredInc IS 0.
 // TO-DO.
 // Retrograde launch, pitch isn't perfect, but it's working.
 // Very low TWR upper stages might need something to help them pitch up to compensate for lack of thrust.
-// Azimuth function crashes if desiredInc < ship:latitude for retrograde launch.
 
 // ON HOLD UNTIL STAGE:MASS AND ENGINE:FUELTYPE OR EQUIVALENTS.
 // Calculate stage delta-v.
