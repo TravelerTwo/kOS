@@ -5,6 +5,12 @@ PARAMETER desiredInc IS 0.
 // Retrograde launch, pitch isn't perfect, but it's working.
 // Very low TWR upper stages might need something to help them pitch up to compensate for lack of thrust.
 
+// Add to if apo... check:
+// SET burndV TO burn_dV().
+// IF stage:deltav:vacuum < burndV { SET maxthrustAtStage TO 0. }
+// Stages perhaps a bit early.
+// Questionable reliability.
+
 // ON HOLD UNTIL STAGE:MASS AND ENGINE:FUELTYPE OR EQUIVALENTS.
 // Calculate stage delta-v.
 // If stage dV < burnDv { stage. }
