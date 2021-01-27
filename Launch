@@ -4,16 +4,8 @@ PARAMETER desiredInc IS 0.
 // TO-DO.
 // Retrograde launch, pitch isn't perfect, but it's working.
 // Very low TWR upper stages might need something to help them pitch up to compensate for lack of thrust.
+// stage_dV check perhaps stages a bit early.
 
-// Add to if apo... check:
-// SET burndV TO burn_dV().
-// IF stage:deltav:vacuum < burndV { SET maxthrustAtStage TO 0. }
-// Stages perhaps a bit early.
-// Questionable reliability.
-
-// ON HOLD UNTIL STAGE:MASS AND ENGINE:FUELTYPE OR EQUIVALENTS.
-// Calculate stage delta-v.
-// If stage dV < burnDv { stage. }
 // Check next stage TWR.
 // Adapt burn_check to use next stage TWR after using whatever dV remains in current stage.
 
@@ -52,6 +44,41 @@ FUNCTION launch_azimuth {
     LOCAL vel_e IS vdot(V_corr, heading(90, 0):vector).
     LOCAL az_corr IS arctan2(vel_e, vel_n).
     RETURN az_corr.
+}
+
+FUNCTION stage_dV {
+
+    LOCAL elist_active IS list().
+    LOCAL elist_all IS list().
+    LOCAL rlist IS list().
+    LIST ENGINES IN elist_all.
+
+    LOCAL fuelMass IS 0.
+    LOCAL i IS 0.
+    LOCAL ispTotal IS 0.
+
+    FOR e IN elist_all {
+        IF e:ignition AND NOT e:flameout {
+            elist_active:add(e).
+            WAIT 0.
+        }
+    }
+
+    FOR e IN elist_active {
+        UNTIL i = e:consumedresources:keys:length {
+            IF rlist:contains(e:consumedresources:keys[i]) { BREAK. }
+            rlist:add(e:consumedresources:keys[i]).
+            SET fuelMass TO fuelMass + e:consumedresources[e:consumedresources:keys[i]]:amount * e:consumedresources[e:consumedresources:keys[i]]:density.
+            SET i TO i + 1.
+            WAIT 0.
+        }
+
+        SET i TO 0.
+        SET ispTotal TO ispTotal + e:maxthrustat(0) / ship:maxthrustat(0) * e:vacuumisp.
+        WAIT 0.
+    }
+
+    RETURN 9.80665 * ispTotal * ln(ship:mass / (ship:mass - fuelMass)).
 }
 
 // PHYSICAL PROPERTIES.
@@ -118,6 +145,11 @@ UNTIL FALSE OR sas {
             IF apoapsis > desiredApo - 2500 {
                   SET modeCirc TO TRUE.
                   SET throttleCtrl TO 0.
+                  IF stage_dV() < burn_dV() {
+                      SET maxthrustAtStage TO 0.
+                      PRINT round(stage_dV() - burn_dV,2) at(18,16).
+                      WAIT 1.
+                  }
             }
 
       } ELSE {
