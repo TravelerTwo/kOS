@@ -7,7 +7,7 @@ PARAMETER desiredInc IS 0.
 // stage_dV check perhaps stages a bit early.
 
 // Check next stage TWR.
-// Adapt burn_check to use next stage TWR after using whatever dV remains in current stage.
+// Adapt desiredEta to use next stage TWR after using whatever dV remains in current stage.
 
 CLEARSCREEN.
 SET config:ipu TO 500.
