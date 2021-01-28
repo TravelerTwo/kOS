@@ -55,14 +55,18 @@ FUNCTION stage_dV {
 
     LOCAL fuelMass IS 0.
     LOCAL i IS 0.
+    LOCAL ispFlow IS 0.
+    LOCAL ispThrust IS 0.
     LOCAL ispTotal IS 0.
 
     FOR e IN elist_all {
         IF e:ignition AND NOT e:flameout {
             elist_active:add(e).
-            WAIT 0.
         }
+
+        WAIT 0.
     }
+
 
     FOR e IN elist_active {
         UNTIL i = e:consumedresources:keys:length {
@@ -74,7 +78,9 @@ FUNCTION stage_dV {
         }
 
         SET i TO 0.
-        SET ispTotal TO ispTotal + e:maxthrustat(0) / ship:maxthrustat(0) * e:vacuumisp.
+        SET ispFlow TO ispFlow + e:maxthrustat(0) / (e:vacuumisp * 9.80665).
+        SET ispThrust TO ispThrust + e:maxthrustat(0).
+        SET ispTotal TO ispThrust / (ispFlow * 9.80665).
         WAIT 0.
     }
 
