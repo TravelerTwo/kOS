@@ -14,16 +14,23 @@ LIST ENGINES IN elist.
 
 // VARIABLES.
 LOCAL burnTime IS 0.
+LOCAL ispFlow IS 0.
+LOCAL ispThrust is 0.
 LOCAL ispTotal IS 0.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 LOCAL nodeBurn IS nextnode:burnvector.
 LOCAL nodeTime IS 0.
+LOCAL nodeVang IS vang(nodeBurn, nextnode:burnvector).
 LOCAL nodeVdot IS vdot(nodeBurn, nextnode:burnvector).
 
 FOR e IN elist {
     IF e:ignition AND e:flameout { e:shutdown(). }
-    SET ispTotal TO ispTotal + e:maxthrust / ship:maxthrust * e:isp.
+    SET ispFlow TO ispFlow + e:availablethrust / (e:isp * 9.80665).
+    SET ispThrust TO ispThrust + e:availablethrust.
+    WAIT 0.
 }
+
+SET ispTotal TO ispThrust / (ispFlow * 9.80665).
 
 // SYSTEM CONTROL.
 LOCAL modeBurn IS FALSE.
@@ -31,7 +38,7 @@ LOCAL steeringCtrl IS lookdirup(nextnode:burnvector, facing:topvector).
 LOCAL throttleCtrl IS 0.
 
 PRINT " ".
-PRINT " ISP           = " + round(ispTotal).
+PRINT " ISP           = " + round(ispTotal,1).
 PRINT " Burn time     =".
 PRINT " Half time     =".
 PRINT " Node ETA      =".
@@ -39,6 +46,7 @@ PRINT "--------------------------".
 PRINT " ".
 PRINT " Node angle    =".
 PRINT " Node delta-V  =".
+PRINT " Node vang     =".
 PRINT " Node Vdot     =".
 PRINT "--------------------------".
 
@@ -57,13 +65,14 @@ UNTIL FALSE OR sas {
 
             SET throttleCtrl TO min(1, nextnode:deltav:mag / maxAccel).
 
-            IF nextnode:deltav:mag < 0.001 OR nodeVdot < 0.999 { BREAK. }
+            IF nextnode:deltav:mag < 0.001 OR nodeVang > 45 OR nodeVdot < 0.999 { BREAK. }
 
       }
 
       SET burnTime TO burn_time().
       SET maxAccel TO ship:availablethrust / ship:mass.
       SET nodeTime TO burnTime * 0.5.
+      SET nodeVang TO vang(nodeBurn, nextnode:burnvector).
       SET nodeVdot TO vdot(nodeBurn, nextnode:burnvector).
       SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector).
 
@@ -72,7 +81,8 @@ UNTIL FALSE OR sas {
       PRINT round(nextnode:eta,1) + "    " at(17,4).
       PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
       PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
-      PRINT round(nodeVdot,3) + "      " at(17,9).
+      PRINT round(nodeVang,3) + "      " at(17,9).
+      PRINT round(nodeVdot,3) + "      " at(17,10).
 
       WAIT 0.
 }
