@@ -67,7 +67,6 @@ FUNCTION stage_dV {
         WAIT 0.
     }
 
-
     FOR e IN elist_active {
         UNTIL i = e:consumedresources:keys:length {
             IF rlist:contains(e:consumedresources:keys[i]) { BREAK. }
