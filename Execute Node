@@ -47,7 +47,7 @@ PRINT " ".
 PRINT " Node angle    =".
 PRINT " Node delta-V  =".
 PRINT " Node vang     =".
-PRINT " Node Vdot     =".
+PRINT " Node vdot     =".
 PRINT "--------------------------".
 
 rcs OFF.
