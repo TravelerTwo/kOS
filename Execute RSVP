@@ -1,0 +1,8 @@
+PARAMETER dest.
+PARAMETER peri IS 100000.
+
+CLEARSCREEN.
+
+runoncepath("0:/rsvp/main").
+local options is lexicon("create_maneuver_nodes", "first", "verbose", true, "final_orbit_periapsis", peri).
+rsvp:goto(dest, options).
