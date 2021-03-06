@@ -74,8 +74,8 @@ FUNCTION vdot_d {
 }
 
 // LISTS.
-LOCAL lex_axis IS lex("FORE", 0, "STAR", 0, "TOP", 0).
-LOCAL list_axis IS list("FORE", "STAR", "TOP").
+LOCAL lex_axis IS lex("fore", 0, "star", 0, "top", 0).
+LOCAL list_axis IS list("fore", "star", "top").
 LOCAL list_num IS list("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", ".").
 
 // VARIABLES.
@@ -148,9 +148,9 @@ UNTIL NOT HASTARGET OR sas {
             }
 
             IF target:istype("part") AND ship:controlpart:targetable {
-                  SET lex_axis["STAR"] TO dStar.
-                  SET lex_axis["TOP"] TO dTop.
-                  SET lex_axis["FORE"] TO dFore.
+                  SET lex_axis:star TO dStar.
+                  SET lex_axis:top TO dTop.
+                  SET lex_axis:fore TO dFore.
                   SET modeDock TO TRUE.
                   rcs ON.
                   PRINT ">>" at(2,9).
@@ -160,18 +160,18 @@ UNTIL NOT HASTARGET OR sas {
 
       } ELSE IF modeDock {
 
-            SET offsetFore TO -target:facing:vector * lex_axis["FORE"].
-            SET offsetStar TO -target:facing:starvector * lex_axis["STAR"].
-            SET offsetTop TO -target:facing:topvector * lex_axis["TOP"].
+            SET offsetFore TO -target:facing:vector * lex_axis:fore.
+            SET offsetStar TO -target:facing:starvector * lex_axis:star.
+            SET offsetTop TO -target:facing:topvector * lex_axis:top.
             SET offsetPos TO offsetFore + offsetStar + offsetTop.
             SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector).
 
             new_parameter().
             RCS_output(desiredPos - offsetPos).
 
-            PRINT round(lex_axis["FORE"],2) + "      " at(15,9).
-            PRINT round(lex_axis["STAR"],2) + "      " at(15,10).
-            PRINT round(lex_axis["TOP"],2) + "      " at(15,11).
+            PRINT round(lex_axis:fore,2) + "      " at(15,9).
+            PRINT round(lex_axis:star,2) + "      " at(15,10).
+            PRINT round(lex_axis:top,2) + "      " at(15,11).
 
             IF NOT target:istype("part") OR NOT ship:controlpart:targetable {
                   SET modeDock TO FALSE.
