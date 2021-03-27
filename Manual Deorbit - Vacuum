@@ -6,7 +6,7 @@
 
 CLEARSCREEN.
 SET config:ipu TO 2000.
-SET terminal:height TO 35.
+SET terminal:height TO 30.
 SET terminal:width TO 40.
 
 FUNCTION h_time_to {
