@@ -1,0 +1,217 @@
+// Add altitude modifier to minspeed (low altitude: 0.5, high altitude: 0.9)?
+// Rotation of the body drifts peak.
+// Adjust pitch based on TWR?
+// Peak sometimes doesn't update.
+// Might happen if peak is not in list, starts working when list resets.
+
+CLEARSCREEN.
+SET config:ipu TO 2000.
+SET terminal:height TO 35.
+SET terminal:width TO 40.
+
+FUNCTION h_time_to {
+    PARAMETER loc.
+    LOCAL hDist IS vdot(vxcl(up:vector, loc:position), srfprograde:vector).
+    RETURN hDist / groundspeed.
+}
+
+FUNCTION terrain_scan {
+    LOCAL pos IS body:geopositionof(positionat(ship, time:seconds + 0.5 * timeStop)).
+
+    IF pos:terrainheight > peak:terrainheight {
+        SET peak TO pos.
+        SET desiredAlt TO 250 + peak:terrainheight.
+
+    } ELSE IF pos:terrainheight < valley:terrainheight { SET valley TO pos. }
+
+    IF pos:terrainheight > scan:terrainheight {
+        SET scan TO pos.
+
+    } ELSE IF pos:terrainheight < scan:terrainheight AND (pos:position - scan:position):mag > groundspeed * 10 {
+        list_peaks:add(scan).
+        SET scan TO valley.
+    }
+
+    IF timeList < 0 {
+        list_peaks:remove(0).
+        IF list_peaks:empty { list_peaks:add(pos). }
+    }
+
+    IF timePeak < 0 {
+        SET peak TO pos.
+        FOR p IN list_peaks {
+            IF p:terrainheight > peak:terrainheight { SET peak TO p. }
+            WAIT 0.
+        }
+        SET desiredAlt TO 250 + peak:terrainheight.
+    }
+}
+
+FUNCTION v_speed {
+    LOCAL maxSpeed IS -sqrt(max(0, 1.5 * maxAccel * b:bottomaltradar - 2 * g * b:bottomaltradar)).
+    LOCAL pos IS positionat(ship, time:seconds + timePeak).
+    LOCAL posAlt IS desiredAlt - body:altitudeof(pos).
+    IF posAlt > 0 {
+        SET desiredDiff TO posAlt.
+        SET timeStop TO timePeak.
+    }
+
+    LOCAL desiredSpeed IS max(maxSpeed, 2 * desiredDiff / timeStop - verticalspeed).
+    LOCAL vSpeedError IS desiredSpeed - verticalspeed.
+    LOCAL vSpeedRate IS verticalspeed - vSpeedDelta.
+    SET vSpeedDelta TO verticalspeed.
+
+    PRINT round(desiredSpeed,2) + "    " at(17,16).
+    PRINT round(vSpeedError,2) + "    " at(17,18).
+    PRINT round(vSpeedRate,4) + "      " at(17,19).
+}
+
+// LISTS.
+LOCAL list_peaks IS list(body:geopositionof(velocity:surface * 30)).
+
+// PHYSICAL PROPERTIES.
+LOCAL g IS body:mu / body:position:sqrmagnitude.
+
+// VARIABLES.
+LOCAL b IS ship:bounds.
+LOCAL desiredAlt IS 0.
+LOCAL desiredDiff IS desiredAlt - altitude.
+LOCAL maxAccel IS max(0.0001, ship:availablethrust / ship:mass).
+LOCAL navPitch IS 90.
+LOCAL vSpeedDelta IS 0.
+
+LOCAL peak IS list_peaks[0].
+LOCAL scan IS ship:geoposition.
+LOCAL valley IS ship:geoposition.
+
+LOCAL burnAccel IS verticalspeed^2 / 2 / b:bottomaltradar + g.
+LOCAL burnThrot IS burnAccel / maxAccel.
+LOCAL timeList IS h_time_to(list_peaks[0]).
+LOCAL timePeak IS h_time_to(peak).
+LOCAL timeStop IS velocityat(ship, time:seconds + eta:periapsis):surface:mag / maxAccel.
+
+// SYSTEM CONTROL.
+LOCAL modeApproach IS TRUE.
+LOCAL modeBrake IS TRUE.
+LOCAL modeBurn IS FALSE.
+LOCAL steeringCtrl IS facing:vector.
+LOCAL throttleCtrl IS 0.
+
+PRINT " ".
+PRINT " Burn accel    =".
+PRINT " Burn throt    =".
+PRINT " Local gravity =".
+PRINT " Local TWR     =".
+PRINT " Radar alt     =".
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Desired Alt   =".
+PRINT " Relative alt  =".
+PRINT " ".
+PRINT " hSpeed        =".
+PRINT " Stoptime      = " + round(timeStop,2).
+PRINT "--------------------------".
+PRINT " vSpeed".
+PRINT "       Current =".
+PRINT "       Desired =".
+PRINT " ".
+PRINT "       Error   =".
+PRINT "       Rate    =".
+PRINT "       Pitch   =".
+PRINT "--------------------------".
+PRINT "           List[0]    Peak".
+PRINT " Altitude:".
+PRINT " Time to:".
+PRINT " ".
+PRINT " Total peaks:".
+PRINT "--------------------------".
+
+WAIT 1.
+sas OFF.
+LOCK steering TO steeringCtrl.
+LOCK throttle TO throttleCtrl.
+
+IF eta:periapsis > max(60, timeStop) {
+    warpto(time:seconds + eta:periapsis - max(60, timeStop)).
+    WAIT UNTIL NOT ship:unpacked.
+    WAIT UNTIL ship:unpacked.
+}
+
+UNTIL ship:status = "landed" OR sas {
+
+      IF modeBrake {
+
+            terrain_scan().
+            v_speed().
+
+            IF ship:control:pilotpitch <> 0 {
+                  SET navPitch TO max(5, min(120, navPitch - ship:control:pilotpitch * 0.1)).
+            }
+
+            SET desiredDiff TO desiredAlt - altitude.
+            SET timeList TO h_time_to(list_peaks[0]).
+            SET timePeak TO h_time_to(peak).
+            SET timeStop TO groundspeed / maxAccel.
+            SET steeringCtrl TO angleaxis(navPitch, vcrs(velocity:surface, up:vector)) * up:vector.
+
+            PRINT round(desiredAlt) + "  " at(17,8).
+            PRINT round(desiredDiff) + "  " at(17,9).
+            PRINT round(90 - navPitch,1) + "   " at(17,20).
+            PRINT round(list_peaks[0]:terrainheight) + "  " at(11,23).
+            PRINT round(timeList,2) + "    " at(11,24).
+            PRINT round(peak:terrainheight) + "  " at(22,23).
+            PRINT round(timePeak,2) + "    " at(22,24).
+            PRINT list_peaks:length + "  " at(14,26).
+
+            IF modeApproach AND (desiredDiff > 0 OR eta:periapsis < 1) {
+                  SET modeApproach TO FALSE.
+                  SET throttleCtrl TO 1.
+            }
+
+            IF timeStop < 1 {
+                  SET modeBrake TO FALSE.
+                  LOCK throttle TO 0.
+            }
+
+      } ELSE IF NOT modeBrake {
+
+            SET timeStop TO b:bottomaltradar / -verticalspeed.
+
+            IF verticalspeed < -0.5 {
+                  SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
+                  SET throttleCtrl TO burnThrot.
+
+            } ELSE {
+                  SET steeringCtrl TO lookdirup(up:vector, facing:topvector).
+                  SET throttleCtrl TO g / maxAccel.
+            }
+
+            IF NOT modeBurn AND burnThrot > 0.9 AND verticalspeed < 0 {
+                  SET modeBurn TO TRUE.
+                  LOCK throttle TO throttleCtrl.
+            }
+
+            IF NOT gear AND b:bottomaltradar < 250 { gear ON. }
+      }
+
+      SET g TO body:mu / body:position:sqrmagnitude.
+      SET maxAccel TO max(0.0001, ship:availablethrust / ship:mass).
+      SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g.
+      SET burnThrot TO burnAccel / maxAccel.
+
+      PRINT round(burnAccel,2) + "    " at(17,1).
+      PRINT round(burnThrot,2) + "    " at(17,2).
+      PRINT round(g,2) + "    " at(17,3).
+      PRINT round(maxAccel / g,2) + "    " at(17,4).
+      PRINT round(b:bottomaltradar) + "  " at(17,5).
+      PRINT round(groundspeed,2) + "    " at(17,11).
+      PRINT round(timeStop,2) + "    " at(17,12).
+      PRINT round(verticalspeed,2) + "    " at(17,15).
+
+      WAIT 0.
+}
+
+SET ship:control:pilotmainthrottle TO 0.
+SET throttleControl TO 0.
+UNLOCK ALL.
+sas ON.
