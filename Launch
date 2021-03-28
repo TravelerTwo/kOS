@@ -5,6 +5,7 @@ PARAMETER desiredInc IS 0.
 // Retrograde launch, pitch isn't perfect, but it's working.
 // Very low TWR upper stages might need something to help them pitch up to compensate for lack of thrust.
 // stage_dV check perhaps stages a bit early.
+// Add last stage check to staging.
 
 // Check next stage TWR.
 // Adapt desiredEta to use next stage TWR after using whatever dV remains in current stage.
@@ -17,8 +18,9 @@ SET terminal:height TO 20.
 SET terminal:width TO 40.
 
 FUNCTION burn_dV {
-    LOCAL velApo IS velocityat(ship, time:seconds + eta:apoapsis):orbit:mag.
-    LOCAL velCirc IS sqrt(body:mu / (body:radius + apoapsis)).
+    LOCAL r IS body:radius + apoapsis.
+    LOCAL velApo IS sqrt(body:mu * (2 / r - 1 / obt:semimajoraxis)).
+    LOCAL velCirc IS sqrt(body:mu / r).
     RETURN velCirc - velApo.
 }
 
@@ -148,11 +150,13 @@ UNTIL FALSE OR sas {
             SET throttleCtrl TO 1 - ship:q^2.
 
             IF apoapsis > desiredApo - 2500 {
+                  LOCAL stagedV IS stage_dV().
+                  SET burndV TO burn_dV().
                   SET modeCirc TO TRUE.
                   SET throttleCtrl TO 0.
-                  IF stage_dV() < burn_dV() {
+                  IF stagedV < burndV {
                       SET maxthrustAtStage TO 0.
-                      PRINT round(stage_dV() - burn_dV,2) at(18,16).
+                      PRINT round(stagedV - burndV,2) at(18,16).
                       WAIT 1.
                   }
             }
