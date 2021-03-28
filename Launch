@@ -109,7 +109,7 @@ LOCAL maxTwr IS maxAccel / g.
 IF abs(desiredInc) > 180 - abs(ship:latitude) { SET desiredInc TO 180. }
 ELSE IF abs(desiredInc) < abs(ship:latitude) { SET desiredInc TO 0. }
 
-IF desiredApo < body:atm:height { SET desiredApo TO body:atm:height + 10000. }
+IF desiredApo <= body:atm:height { SET desiredApo TO body:atm:height + 10000. }
 IF desiredInc = 180 { SET navYaw TO 270. }
 
 // SYSTEM CONTROL.
