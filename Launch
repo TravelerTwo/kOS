@@ -49,7 +49,6 @@ FUNCTION launch_azimuth {
 }
 
 FUNCTION stage_dV {
-
     LOCAL elist_active IS list().
     LOCAL elist_all IS list().
     LOCAL rlist IS list().
@@ -62,10 +61,7 @@ FUNCTION stage_dV {
     LOCAL ispTotal IS 0.
 
     FOR e IN elist_all {
-        IF e:ignition AND NOT e:flameout {
-            elist_active:add(e).
-        }
-
+        IF e:ignition AND NOT e:flameout { elist_active:add(e). }
         WAIT 0.
     }
 
@@ -73,7 +69,9 @@ FUNCTION stage_dV {
         UNTIL i = e:consumedresources:keys:length {
             IF rlist:contains(e:consumedresources:keys[i]) { BREAK. }
             rlist:add(e:consumedresources:keys[i]).
-            SET fuelMass TO fuelMass + e:consumedresources[e:consumedresources:keys[i]]:amount * e:consumedresources[e:consumedresources:keys[i]]:density.
+            LOCAL fuelAmount IS e:consumedresources[e:consumedresources:keys[i]]:amount.
+            LOCAL fuelDensity IS e:consumedresources[e:consumedresources:keys[i]]:density.
+            SET fuelMass TO fuelMass + fuelAmount * fuelDensity.
             SET i TO i + 1.
             WAIT 0.
         }
@@ -142,7 +140,7 @@ brakes OFF.
 LOCK steering TO steeringCtrl.
 LOCK throttle TO throttleCtrl.
 
-UNTIL FALSE OR sas {
+UNTIL sas {
 
       IF NOT modeCirc {
 
@@ -155,9 +153,9 @@ UNTIL FALSE OR sas {
                   SET modeCirc TO TRUE.
                   SET throttleCtrl TO 0.
                   IF stagedV < burndV {
-                      SET maxthrustAtStage TO 0.
-                      PRINT round(stagedV - burndV,2) at(18,16).
-                      WAIT 1.
+                        SET maxthrustAtStage TO 0.
+                        PRINT round(stagedV - burndV,2) at(18,16).
+                        WAIT 1.
                   }
             }
 
