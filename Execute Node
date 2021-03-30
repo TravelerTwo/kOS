@@ -53,20 +53,13 @@ PRINT "--------------------------".
 rcs OFF.
 sas OFF.
 LOCK steering TO steeringCtrl.
-LOCK throttle TO throttleCtrl.
+LOCK throttle TO 0.
 
-UNTIL FALSE OR sas {
+UNTIL sas {
 
-      IF NOT modeBurn {
-
-            IF nextnode:eta <= nodeTime { SET modeBurn TO TRUE. }
-
-      } ELSE {
-
-            SET throttleCtrl TO min(1, nextnode:deltav:mag / maxAccel).
-
-            IF nextnode:deltav:mag < 0.001 OR nodeVang > 45 OR nodeVdot < 0.999 { BREAK. }
-
+      IF NOT modeBurn AND nextnode:eta <= nodeTime {
+            SET modeBurn TO TRUE.
+            LOCK throttle TO throttleCtrl.
       }
 
       SET burnTime TO burn_time().
@@ -75,6 +68,9 @@ UNTIL FALSE OR sas {
       SET nodeVang TO vang(nodeBurn, nextnode:burnvector).
       SET nodeVdot TO vdot(nodeBurn, nextnode:burnvector).
       SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector).
+      SET throttleCtrl TO min(1, nextnode:deltav:mag / maxAccel).
+
+      IF nextnode:deltav:mag < 0.001 OR nodeVang > 45 OR nodeVdot < 0.999 { BREAK. }
 
       PRINT round(burnTime,1) + "    "  at(17,2).
       PRINT round(nodeTime,1) + "    " at(17,3).
