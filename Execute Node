@@ -24,9 +24,13 @@ LOCAL nodeVang IS vang(nodeBurn, nextnode:burnvector).
 LOCAL nodeVdot IS vdot(nodeBurn, nextnode:burnvector).
 
 FOR e IN elist {
-    IF e:ignition AND e:flameout { e:shutdown(). }
-    SET ispFlow TO ispFlow + e:availablethrust / (e:isp * 9.80665).
-    SET ispThrust TO ispThrust + e:availablethrust.
+    IF e:ignition {
+        IF e:flameout { e:shutdown(). }
+        ELSE {
+            SET ispFlow TO ispFlow + e:availablethrust / (e:isp * 9.80665).
+            SET ispThrust TO ispThrust + e:availablethrust.
+        }
+    }
     WAIT 0.
 }
 
