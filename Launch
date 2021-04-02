@@ -53,7 +53,8 @@ FUNCTION stage_dV {
     LOCAL elist_all IS list().
     LOCAL rlist IS list().
     LIST ENGINES IN elist_all.
-
+    LOCAL fuelAmount IS 0.
+    LOCAL fuelDensity IS 0.
     LOCAL fuelMass IS 0.
     LOCAL i IS 0.
     LOCAL ispFlow IS 0.
@@ -69,8 +70,8 @@ FUNCTION stage_dV {
         UNTIL i = e:consumedresources:keys:length {
             IF rlist:contains(e:consumedresources:keys[i]) { BREAK. }
             rlist:add(e:consumedresources:keys[i]).
-            LOCAL fuelAmount IS e:consumedresources[e:consumedresources:keys[i]]:amount.
-            LOCAL fuelDensity IS e:consumedresources[e:consumedresources:keys[i]]:density.
+            SET fuelAmount TO e:consumedresources[e:consumedresources:keys[i]]:amount.
+            SET fuelDensity TO e:consumedresources[e:consumedresources:keys[i]]:density.
             SET fuelMass TO fuelMass + fuelAmount * fuelDensity.
             SET i TO i + 1.
             WAIT 0.
