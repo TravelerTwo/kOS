@@ -1,0 +1,20 @@
+PARAMETER orb_lan, i, is_AN IS TRUE.
+
+CLEARSCREEN.
+
+FUNCTION mAngle {
+    PARAMETER a.
+    UNTIL a >= 0 { SET a TO a + 360. }
+    RETURN mod(a, 360).
+}
+
+LOCAL eta IS 0.
+LOCAL rel_lng IS arcsin(tan(ship:latitude) / tan(i)).
+IF NOT is_AN { SET rel_lng TO 180 - rel_lng. }
+
+LOCAL g_lan IS mAngle(orb_lan + rel_lng - body:rotationangle).
+LOCAL node_angle IS mAngle(g_lan - ship:longitude).
+SET eta TO (node_angle / 360) * body:rotationperiod.
+
+PRINT "Seconds until: " + round(eta).
+PRINT "Time until:    " + timestamp(eta):clock.
