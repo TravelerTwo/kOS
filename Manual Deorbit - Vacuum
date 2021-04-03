@@ -51,7 +51,7 @@ FUNCTION v_speed {
     LOCAL maxSpeed IS -sqrt(max(0, 1.5 * maxAccel * b:bottomaltradar - 2 * g * b:bottomaltradar)).
     LOCAL pos IS positionat(ship, time:seconds + timePeak).
     LOCAL posAlt IS desiredAlt - body:altitudeof(pos).
-    IF posAlt > 0 {
+    IF timePeak < timeStop AND posAlt > 0 {
         SET desiredDiff TO posAlt.
         SET timeStop TO timePeak.
     }
