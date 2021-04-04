@@ -8,7 +8,7 @@ FUNCTION mAngle {
 
 LOCAL rel_lng IS 0.
 LOCAL g_lan IS 0.
-LOCAL node_angle SI 0.
+LOCAL node_angle IS 0.
 LOCAL eta IS 0.
 
 rcs ON.
@@ -17,10 +17,10 @@ UNTIL NOT rcs {
 
     CLEARSCREEN.
 
-    SET rel_lng IS arcsin(tan(ship:latitude) / tan(inc)).
-    SET g_lan IS mAngle(orb_lan + rel_lng - body:rotationangle).
-    SET node_angle IS mAngle(g_lan - ship:longitude).
-    SET eta IS (node_angle / 360) * body:rotationperiod.
+    SET rel_lng TO arcsin(tan(ship:latitude) / tan(inc)).
+    SET g_lan TO mAngle(orb_lan + rel_lng - body:rotationangle).
+    SET node_angle TO mAngle(g_lan - ship:longitude).
+    SET eta TO (node_angle / 360) * body:rotationperiod.
 
     PRINT "Seconds until: " + round(eta).
     PRINT "Time until:    " + timestamp(eta):clock.
