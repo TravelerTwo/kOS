@@ -1,0 +1,80 @@
+CLEARSCREEN.
+SET config:ipu TO 300.
+SET terminal:height TO 22.
+SET terminal:width TO 40.
+
+// PHYSICAL PROPERTIES.
+LOCAL g IS body:mu / body:position:sqrmagnitude.
+LOCAL p IS body:atm:altitudepressure(altitude).
+
+// VARIABLES.
+LOCAL b IS ship:bounds.
+LOCAL maxAccel IS ship:availablethrust / ship:mass.
+
+LOCAL burnAccel IS verticalspeed^2 / 2 / b:bottomaltradar + g.
+LOCAL burnThrot IS burnAccel / maxAccel.
+
+// SYSTEM CONTROL.
+LOCAL modeBurn IS FALSE.
+LOCAL steeringCtrl IS facing:vector.
+LOCAL throttleCtrl IS 0.
+
+PRINT " ".
+PRINT " Altitude       =".
+PRINT " Burn accel     =".
+PRINT " Local gravity  =".
+PRINT " Local TWR      =".
+PRINT " Throttle       =".
+PRINT "--------------------------".
+
+rcs ON.
+sas OFF.
+IF body:atm:exists { brakes ON. }
+LOCK steering TO steeringCtrl.
+LOCK throttle TO 0.
+
+UNTIL ship:status = "landed" OR ship:status = "splashed" {
+
+      IF verticalspeed < -0.5 {
+            SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
+            SET throttleCtrl TO burnThrot.
+
+      } ELSE {
+            SET steeringCtrl TO lookdirup(up:vector, facing:topvector).
+            SET throttleCtrl TO g / maxAccel.
+      }
+
+      IF NOT modeBurn AND burnThrot > 0.9 AND verticalspeed < 0 {
+            SET modeBurn TO TRUE.
+            LOCK throttle TO throttleCtrl.
+
+      } ELSE IF modeBurn AND (verticalspeed > 0 OR b:bottomaltradar > 1000 AND burnThrot < 0.5) {
+            SET modeBurn TO FALSE.
+            LOCK throttle TO 0.
+      }
+
+      IF body:atm:exists AND NOT chutessafe { chutessafe ON. }
+
+      IF NOT gear AND b:bottomaltradar < 250 { gear ON. }
+
+      SET g TO body:mu / body:position:sqrmagnitude.
+      SET p TO body:atm:altitudepressure(altitude).
+      SET maxAccel TO ship:availablethrust / ship:mass.
+      SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g.
+      SET burnThrot TO burnAccel / maxAccel.
+      SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
+
+      PRINT round(b:bottomaltradar) + "  " at(18,1).
+      PRINT round(burnAccel,2) + "    " at(18,2).
+      PRINT round(g,2) + "    " at(18,3).
+      PRINT round(maxAccel / g,2) + "    " at(18,4).
+      PRINT round(burnThrot,2) + "    " at(18,5).
+
+      WAIT 0.
+}
+
+SET ship:control:pilotmainthrottle TO 0.
+SET throttleCtrl TO 0.
+UNLOCK ALL.
+rcs OFF.
+sas ON.
