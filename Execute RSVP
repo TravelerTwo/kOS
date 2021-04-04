@@ -1,5 +1,5 @@
 PARAMETER dest.
-PARAMETER peri IS 100000.
+PARAMETER peri IS max(100000, dest:atm:height * 10).
 
 CLEARSCREEN.
 
