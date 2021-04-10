@@ -74,8 +74,6 @@ UNTIL sas {
       SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector).
       SET throttleCtrl TO min(1, nextnode:deltav:mag / maxAccel).
 
-      IF nextnode:deltav:mag < 0.001 OR nodeVang > 45 OR nodeVdot < 0.999 { BREAK. }
-
       PRINT round(burnTime,1) + "    "  at(17,2).
       PRINT round(nodeTime,1) + "    " at(17,3).
       PRINT round(nextnode:eta,1) + "    " at(17,4).
@@ -83,6 +81,8 @@ UNTIL sas {
       PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
       PRINT round(nodeVang,3) + "      " at(17,9).
       PRINT round(nodeVdot,3) + "      " at(17,10).
+
+      IF nextnode:deltav:mag < 0.001 OR nodeVang > 45 OR nodeVdot < 0.999 { BREAK. }
 
       WAIT 0.
 }
