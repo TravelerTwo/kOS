@@ -5,9 +5,8 @@ PARAMETER desiredInc IS 0.
 // Retrograde launch, pitch isn't perfect, but it's working.
 // Very low TWR upper stages might need something to help them pitch up to compensate for lack of thrust.
 // stage_dV check perhaps stages a bit early.
-// Add last stage check to staging.
 
-// Check next stage TWR.
+// Find next stage TWR, possiblethrust / currentmass might be good enough.
 // Adapt desiredEta to use next stage TWR after using whatever dV remains in current stage.
 
 CLEARSCREEN.
@@ -96,6 +95,7 @@ LOCAL p IS body:atm:altitudepressure(altitude).
 LOCAL burndV IS burn_dV().
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 LOCAL maxthrustAtStage IS ship:maxthrustat(0).
+LOCAL i IS 1.
 LOCAL navAlt IS 100 + alt:radar.
 LOCAL navPitch IS 90.
 LOCAL navYaw IS 90.
@@ -155,7 +155,7 @@ UNTIL sas {
                   SET modeCirc TO TRUE.
                   SET throttleCtrl TO 0.
                   IF stagedV < burndV {
-                        SET maxthrustAtStage TO 0.
+                        SET i TO 30.
                         PRINT round(stagedV - burndV,2) at(18,16).
                         WAIT 1.
                   }
@@ -166,7 +166,7 @@ UNTIL sas {
             SET burndV TO burn_dV().
             SET desiredEta TO burndV / max(0.0001, maxAccel) / 2.
             SET navPitch TO 90 - pitchOrbit.
-            SET PIDApo:setpoint TO desiredEta + 1.
+            SET PIDApo:setpoint TO desiredEta + i.
             SET throttleCtrl TO PIDApo:update(time:seconds, eta:apoapsis).
 
             PRINT round(desiredEta,2) + "    " at(18,11).
@@ -181,6 +181,7 @@ UNTIL sas {
             WAIT 1.
             stage.
             WAIT UNTIL stage:ready.
+            SET i TO 1.
             SET maxthrustAtStage TO ship:maxthrustat(0).
       }
 
