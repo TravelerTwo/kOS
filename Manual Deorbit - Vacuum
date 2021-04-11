@@ -49,12 +49,7 @@ FUNCTION terrain_scan {
 
 FUNCTION v_speed {
     LOCAL maxSpeed IS -sqrt(max(0, 1.5 * maxAccel * b:bottomaltradar - 2 * g * b:bottomaltradar)).
-    LOCAL pos IS positionat(ship, time:seconds + timePeak).
-    LOCAL posAlt IS desiredAlt - body:altitudeof(pos).
-    IF timePeak < timeStop AND posAlt > 0 {
-        SET desiredDiff TO posAlt.
-        SET timeStop TO timePeak.
-    }
+    IF desiredAlt > 0 { SET timeStop TO timePeak. }
 
     LOCAL desiredSpeed IS max(maxSpeed, 2 * desiredDiff / timeStop - verticalspeed).
     LOCAL vSpeedError IS desiredSpeed - verticalspeed.
@@ -162,6 +157,10 @@ UNTIL ship:status = "landed" OR sas {
             PRINT round(peak:terrainheight) + "  " at(22,23).
             PRINT round(timePeak,2) + "    " at(22,24).
             PRINT list_peaks:length + "  " at(14,26).
+
+    // LOCAL pos IS positionat(ship, time:seconds + timePeak).
+    // LOCAL posAlt IS desiredAlt - body:altitudeof(pos).
+    // IF modeApproach AND (posAlt > 0 OR desiredDiff > 0 OR eta:periapsis < 1) {
 
             IF modeApproach AND (desiredDiff > 0 OR eta:periapsis < 1) {
                   SET modeApproach TO FALSE.
