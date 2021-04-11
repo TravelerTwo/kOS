@@ -1,4 +1,6 @@
-PARAMETER inc, orb_lan.
+PARAMETER inc IS ship:latitude, orb_lan IS ship:longitude, launch IS TRUE.
+
+CLEARSCREEN.
 
 FUNCTION mAngle {
     PARAMETER a.
@@ -6,33 +8,49 @@ FUNCTION mAngle {
     RETURN mod(a, 360).
 }
 
+// VARIABLES.
 LOCAL rel_lng IS 0.
 LOCAL g_lan IS 0.
 LOCAL node_angle IS 0.
 LOCAL eta IS 0.
 
+IF hastarget {
+    SET inc TO target:obt:inclination.
+    SET orb_lan TO target:obt:lan.
+}
+
+PRINT " ".
+PRINT "       Time to launch":
+PRINT "North:".
+PRINT "South:".
+
 rcs ON.
 
 UNTIL NOT rcs {
-
-    CLEARSCREEN.
 
     SET rel_lng TO arcsin(tan(ship:latitude) / tan(inc)).
     SET g_lan TO mAngle(orb_lan + rel_lng - body:rotationangle).
     SET node_angle TO mAngle(g_lan - ship:longitude).
     SET eta TO (node_angle / 360) * body:rotationperiod.
 
-    PRINT "Seconds until: " + round(eta).
-    PRINT "Time until:    " + timestamp(eta):clock.
+    PRINT timestamp(eta):clock + "  " at(7,2).
+
+    IF eta < 300 { BREAK. }
 
     SET rel_lng TO 180 - rel_lng.
     SET g_lan TO mAngle(orb_lan + rel_lng - body:rotationangle).
     SET node_angle TO mAngle(g_lan - ship:longitude).
     SET eta TO (node_angle / 360) * body:rotationperiod.
 
-    PRINT " ".
-    PRINT "Seconds until: " + round(eta).
-    PRINT "Time until:    " + timestamp(eta):clock.
+    PRINT timestamp(eta):clock + "  " at(7,3).
+
+    IF eta < 300 {
+        SET inc TO -inc.
+        BREAK.
+    }
 
     WAIT 0.
 }
+
+IF launch { runpath("0:/launch",200000,inc). }
+rcs OFF.
