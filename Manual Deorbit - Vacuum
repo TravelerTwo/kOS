@@ -56,6 +56,7 @@ FUNCTION v_speed {
     LOCAL vSpeedRate IS verticalspeed - vSpeedDelta.
     SET vSpeedDelta TO verticalspeed.
 
+print round(vdot(up:vector, maxAccel),2) + "    " at(17,17).
     PRINT round(desiredSpeed,2) + "    " at(17,16).
     PRINT round(vSpeedError,2) + "    " at(17,18).
     PRINT round(vSpeedRate,4) + "      " at(17,19).
@@ -73,6 +74,7 @@ LOCAL desiredAlt IS 0.
 LOCAL desiredDiff IS desiredAlt - altitude.
 LOCAL maxAccel IS max(0.0001, ship:availablethrust / ship:mass).
 LOCAL navPitch IS 90.
+LOCAL peakDiff IS 0.
 LOCAL vSpeedDelta IS 0.
 
 LOCAL peak IS list_peaks[0].
@@ -158,13 +160,12 @@ UNTIL ship:status = "landed" OR sas {
             PRINT round(timePeak,2) + "    " at(22,24).
             PRINT list_peaks:length + "  " at(14,26).
 
-    // LOCAL pos IS positionat(ship, time:seconds + timePeak).
-    // LOCAL posAlt IS desiredAlt - body:altitudeof(pos).
-    // IF modeApproach AND (posAlt > 0 OR desiredDiff > 0 OR eta:periapsis < 1) {
-
-            IF modeApproach AND (desiredDiff > 0 OR eta:periapsis < 1) {
-                  SET modeApproach TO FALSE.
-                  SET throttleCtrl TO 1.
+            IF modeApproach {
+                  SET peakDiff TO desiredAlt - body:altitudeof(positionat(ship, time:seconds timePeak)).
+                  IF desiredDiff > 0 OR peakDiff > 0 OR eta:periapsis < 1 {
+                        SET modeApproach TO FALSE.
+                        SET throttleCtrl TO 1.
+                  }
             }
 
             IF timeStop < 1 {
