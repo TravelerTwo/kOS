@@ -1,4 +1,3 @@
-// Add altitude modifier to minspeed (low altitude: 0.5, high altitude: 0.9)?
 // Rotation of the body drifts peak.
 // Adjust pitch based on TWR?
 // Peak sometimes doesn't update.
@@ -49,14 +48,14 @@ FUNCTION terrain_scan {
 
 FUNCTION v_speed {
     LOCAL maxSpeed IS -sqrt(max(0, 1.5 * maxAccel * b:bottomaltradar - 2 * g * b:bottomaltradar)).
-    IF desiredAlt > 0 { SET timeStop TO timePeak. }
+    IF desiredAlt > 0 { SET timeStop TO max(1, timePeak). }
 
     LOCAL desiredSpeed IS max(maxSpeed, 2 * desiredDiff / timeStop - verticalspeed).
     LOCAL vSpeedError IS desiredSpeed - verticalspeed.
     LOCAL vSpeedRate IS verticalspeed - vSpeedDelta.
     SET vSpeedDelta TO verticalspeed.
 
-print round(vdot(up:vector, maxAccel),2) + "    " at(17,17).
+print round(vdot(up:vector, facing:vector * maxAccel),2) + "    " + round(cos(navPitch) * maxAccel,2) + "    " at(22,17).
     PRINT round(desiredSpeed,2) + "    " at(17,16).
     PRINT round(vSpeedError,2) + "    " at(17,18).
     PRINT round(vSpeedRate,4) + "      " at(17,19).
@@ -161,7 +160,7 @@ UNTIL ship:status = "landed" OR sas {
             PRINT list_peaks:length + "  " at(14,26).
 
             IF modeApproach {
-                  SET peakDiff TO desiredAlt - body:altitudeof(positionat(ship, time:seconds timePeak)).
+                  SET peakDiff TO desiredAlt - body:altitudeof(positionat(ship, time:seconds + timePeak)).
                   IF desiredDiff > 0 OR peakDiff > 0 OR eta:periapsis < 1 {
                         SET modeApproach TO FALSE.
                         SET throttleCtrl TO 1.
