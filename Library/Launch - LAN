@@ -20,7 +20,7 @@ IF hastarget {
 }
 
 PRINT " ".
-PRINT "       Time to launch":
+PRINT "       Time to launch:".
 PRINT "North:".
 PRINT "South:".
 
