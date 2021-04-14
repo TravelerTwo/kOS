@@ -50,7 +50,8 @@ FUNCTION v_speed {
     LOCAL maxSpeed IS -sqrt(max(0, 1.5 * maxAccel * b:bottomaltradar - 2 * g * b:bottomaltradar)).
     IF desiredAlt > 0 { SET timeStop TO max(1, timePeak). }
 
-    LOCAL desiredSpeed IS max(maxSpeed, 2 * desiredDiff / timeStop - verticalspeed).
+    // LOCAL desiredSpeed IS max(maxSpeed, 2 * desiredDiff / timeStop - verticalspeed).
+    LOCAL desiredSpeed IS desiredDiff / timeStop.
     LOCAL vSpeedError IS desiredSpeed - verticalspeed.
     LOCAL vSpeedRate IS verticalspeed - vSpeedDelta.
     SET vSpeedDelta TO verticalspeed.
