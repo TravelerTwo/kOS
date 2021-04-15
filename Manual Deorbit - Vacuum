@@ -48,15 +48,16 @@ FUNCTION terrain_scan {
 
 FUNCTION v_speed {
     LOCAL maxSpeed IS -sqrt(max(0, 1.5 * maxAccel * b:bottomaltradar - 2 * g * b:bottomaltradar)).
-    IF desiredAlt > 0 { SET timeStop TO max(1, timePeak). }
+    IF desiredDiff > 0 { SET timeStop TO max(1, timePeak). }
 
     // LOCAL desiredSpeed IS max(maxSpeed, 2 * desiredDiff / timeStop - verticalspeed).
-    LOCAL desiredSpeed IS desiredDiff / timeStop.
+    LOCAL desiredSpeed IS max(maxSpeed, desiredDiff / timeStop).
     LOCAL vSpeedError IS desiredSpeed - verticalspeed.
     LOCAL vSpeedRate IS verticalspeed - vSpeedDelta.
     SET vSpeedDelta TO verticalspeed.
 
 print round(vdot(up:vector, facing:vector * maxAccel),2) + "    " + round(cos(navPitch) * maxAccel,2) + "    " at(22,17).
+print round((-2 * vcrs(body:angularvel, velocity:surface)):mag,4) + "      " + round(vcrs(body:angularvel, vcrs(body:angularvel, body:position)):mag,4) + "      " at(22,28).
     PRINT round(desiredSpeed,2) + "    " at(17,16).
     PRINT round(vSpeedError,2) + "    " at(17,18).
     PRINT round(vSpeedRate,4) + "      " at(17,19).
@@ -71,7 +72,6 @@ LOCAL g IS body:mu / body:position:sqrmagnitude.
 // VARIABLES.
 LOCAL b IS ship:bounds.
 LOCAL desiredAlt IS 0.
-LOCAL desiredDiff IS desiredAlt - altitude.
 LOCAL maxAccel IS max(0.0001, ship:availablethrust / ship:mass).
 LOCAL navPitch IS 90.
 LOCAL peakDiff IS 0.
@@ -83,6 +83,7 @@ LOCAL valley IS ship:geoposition.
 
 LOCAL burnAccel IS verticalspeed^2 / 2 / b:bottomaltradar + g.
 LOCAL burnThrot IS burnAccel / maxAccel.
+LOCAL desiredDiff IS desiredAlt - altitude.
 LOCAL timeList IS h_time_to(list_peaks[0]).
 LOCAL timePeak IS h_time_to(peak).
 LOCAL timeStop IS velocityat(ship, time:seconds + eta:periapsis):surface:mag / maxAccel.
@@ -102,7 +103,7 @@ PRINT " Local TWR     =".
 PRINT " Radar alt     =".
 PRINT "--------------------------".
 PRINT " ".
-PRINT " Desired Alt   =".
+PRINT " Desired alt   =".
 PRINT " Relative alt  =".
 PRINT " ".
 PRINT " hSpeed        =".
