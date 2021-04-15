@@ -20,18 +20,21 @@ LOCAL steeringCtrl IS facing:vector.
 LOCAL throttleCtrl IS 0.
 
 PRINT " ".
-PRINT " Altitude       =".
-PRINT " Burn accel     =".
-PRINT " Local gravity  =".
-PRINT " Local TWR      =".
-PRINT " Throttle       =".
+PRINT " Burn accel    =".
+PRINT " Burn throt    =".
+PRINT " Local gravity =".
+PRINT " Local TWR     =".
+PRINT " Radar alt     =".
 PRINT "--------------------------".
 
-rcs ON.
 sas OFF.
-IF body:atm:exists { brakes ON. }
 LOCK steering TO steeringCtrl.
 LOCK throttle TO 0.
+
+IF body:atm:exists {
+    brakes ON. 
+    rcs ON.
+}
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" {
 
@@ -64,11 +67,11 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" {
       SET burnThrot TO burnAccel / maxAccel.
       SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
 
-      PRINT round(b:bottomaltradar) + "  " at(18,1).
-      PRINT round(burnAccel,2) + "    " at(18,2).
+      PRINT round(burnAccel,2) + "    " at(18,1).
+      PRINT round(burnThrot,2) + "    " at(18,2).
       PRINT round(g,2) + "    " at(18,3).
       PRINT round(maxAccel / g,2) + "    " at(18,4).
-      PRINT round(burnThrot,2) + "    " at(18,5).
+      PRINT round(b:bottomaltradar) + "  " at(18,5).
 
       WAIT 0.
 }
