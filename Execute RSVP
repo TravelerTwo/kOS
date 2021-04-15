@@ -1,8 +1,7 @@
 PARAMETER dest.
-PARAMETER peri IS max(100000, dest:atm:height * 10).
 
 CLEARSCREEN.
 
 runoncepath("0:/rsvp/main").
-local options is lexicon("create_maneuver_nodes", "first", "verbose", true, "final_orbit_periapsis", peri).
+local options is lexicon("create_maneuver_nodes", "first", "verbose", true).
 rsvp:goto(dest, options).
