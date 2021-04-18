@@ -20,20 +20,23 @@ IF hastarget {
 }
 
 PRINT " ".
-PRINT "       Time to launch:".
-PRINT "North:".
-PRINT "South:".
+PRINT "       Time to launch".
+PRINT " ".
+PRINT " North:".
+PRINT " South:".
+PRINT " ".
+PRINT " Automatic launch at T-5 minutes".
 
-rcs ON.
+rcs OFF.
 
-UNTIL NOT rcs {
+UNTIL rcs {
 
     SET rel_lng TO arcsin(tan(ship:latitude) / tan(inc)).
     SET g_lan TO mAngle(orb_lan + rel_lng - body:rotationangle).
     SET node_angle TO mAngle(g_lan - ship:longitude).
     SET eta TO (node_angle / 360) * body:rotationperiod.
 
-    PRINT timestamp(eta):clock + "  " at(7,2).
+    PRINT timestamp(eta):clock + "  " at(8,3).
 
     IF eta < 300 { BREAK. }
 
@@ -42,7 +45,7 @@ UNTIL NOT rcs {
     SET node_angle TO mAngle(g_lan - ship:longitude).
     SET eta TO (node_angle / 360) * body:rotationperiod.
 
-    PRINT timestamp(eta):clock + "  " at(7,3).
+    PRINT timestamp(eta):clock + "  " at(8,4).
 
     IF eta < 300 {
         SET inc TO -inc.
