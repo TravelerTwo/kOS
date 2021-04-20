@@ -20,10 +20,9 @@ IF hastarget {
 }
 
 PRINT " ".
-PRINT "       Time to launch".
-PRINT " ".
-PRINT " North:".
-PRINT " South:".
+PRINT " Time to launch".
+PRINT " North: ".
+PRINT " South: ".
 PRINT " ".
 PRINT " Automatic launch at T-5 minutes".
 
@@ -36,7 +35,7 @@ UNTIL rcs {
     SET node_angle TO mAngle(g_lan - ship:longitude).
     SET eta TO (node_angle / 360) * body:rotationperiod.
 
-    PRINT timestamp(eta):clock + "  " at(8,3).
+    PRINT timestamp(eta):clock + "  " at(8,2).
 
     IF eta < 300 { BREAK. }
 
@@ -45,7 +44,7 @@ UNTIL rcs {
     SET node_angle TO mAngle(g_lan - ship:longitude).
     SET eta TO (node_angle / 360) * body:rotationperiod.
 
-    PRINT timestamp(eta):clock + "  " at(8,4).
+    PRINT timestamp(eta):clock + "  " at(8,3).
 
     IF eta < 300 {
         SET inc TO -inc.
@@ -55,5 +54,7 @@ UNTIL rcs {
     WAIT 0.
 }
 
-IF launch { runpath("0:/launch",200000,inc). }
 rcs OFF.
+kuniverse:timewarp:cancelwarp().
+WAIT UNTIL kuniverse:timewarp:issettled().
+IF launch { runpath("0:/launch",200000,inc). }
