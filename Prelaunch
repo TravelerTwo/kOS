@@ -21,7 +21,7 @@ IF hastarget {
 
 PRINT " ".
 PRINT " Inclination: " + inc.
-PRINT " LAN: " + orb_lan.
+PRINT " LAN:         " + orb_lan.
 PRINT " ".
 PRINT " Time to launch".
 PRINT " North: ".
