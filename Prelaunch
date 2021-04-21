@@ -20,11 +20,15 @@ IF hastarget {
 }
 
 PRINT " ".
+PRINT " Inclination: " + inc.
+PRINT " LAN: " + orb_lan.
+PRINT " ".
 PRINT " Time to launch".
 PRINT " North: ".
 PRINT " South: ".
 PRINT " ".
-PRINT " Automatic launch at T-5 minutes".
+
+IF launch { PRINT " Automatic launch at T-5 minutes". }
 
 rcs OFF.
 
@@ -35,7 +39,7 @@ UNTIL rcs {
     SET node_angle TO mAngle(g_lan - ship:longitude).
     SET eta TO (node_angle / 360) * body:rotationperiod.
 
-    PRINT timestamp(eta):clock + "  " at(8,2).
+    PRINT timestamp(eta):clock + "  " at(8,5).
 
     IF eta < 300 { BREAK. }
 
@@ -44,7 +48,7 @@ UNTIL rcs {
     SET node_angle TO mAngle(g_lan - ship:longitude).
     SET eta TO (node_angle / 360) * body:rotationperiod.
 
-    PRINT timestamp(eta):clock + "  " at(8,3).
+    PRINT timestamp(eta):clock + "  " at(8,6).
 
     IF eta < 300 {
         SET inc TO -inc.
