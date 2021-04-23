@@ -1,7 +1,8 @@
 PARAMETER dest.
+PARAMETER desiredOrbit IS "circular".
 
 CLEARSCREEN.
 
 runoncepath("0:/rsvp/main").
-local options is lexicon("create_maneuver_nodes", "first", "verbose", true).
+local options is lexicon("create_maneuver_nodes", "first", "verbose", true, "final_orbit_type", desiredOrbit).
 rsvp:goto(dest, options).
