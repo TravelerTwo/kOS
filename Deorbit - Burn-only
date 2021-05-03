@@ -36,7 +36,7 @@ IF body:atm:exists {
     rcs ON.
 }
 
-UNTIL ship:status = "landed" OR ship:status = "splashed" {
+UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
       IF verticalspeed < -0.5 {
             SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
