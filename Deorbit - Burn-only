@@ -1,3 +1,5 @@
+PARAMETER deployChutes IS TRUE.
+
 CLEARSCREEN.
 SET config:ipu TO 300.
 SET terminal:height TO 22.
@@ -56,7 +58,7 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
             LOCK throttle TO 0.
       }
 
-      IF body:atm:exists AND NOT chutessafe { chutessafe ON. }
+      IF body:atm:exists AND deployChutes AND NOT chutessafe { chutessafe ON. }
 
       IF NOT gear AND b:bottomaltradar < 250 { gear ON. }
 
