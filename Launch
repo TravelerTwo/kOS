@@ -8,6 +8,8 @@ PARAMETER desiredInc IS 0.
 
 // Find next stage TWR, possiblethrust / currentmass might be good enough.
 // Adapt desiredEta to use next stage TWR after using whatever dV remains in current stage.
+// Experiment with adjusting desiredEta to make up for pitching up before burn.
+// desiredEta * sin(pitchOrbit) or desiredEta - desiredEta * cos(pitchOrbit).
 
 CLEARSCREEN.
 SET config:ipu TO 500.
