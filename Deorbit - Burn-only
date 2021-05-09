@@ -1,4 +1,4 @@
-PARAMETER deployChutes IS TRUE.
+PARAMETER deployChutes IS FALSE.
 
 CLEARSCREEN.
 SET config:ipu TO 300.
