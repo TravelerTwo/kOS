@@ -178,7 +178,7 @@ UNTIL sas {
 
             IF burndV < 0.25 { BREAK. }
       }
-      
+
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
             WAIT 1.
             stage.
