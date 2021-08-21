@@ -14,14 +14,14 @@ LIST ENGINES IN elist.
 
 // VARIABLES.
 LOCAL burnTime IS 0.
+LOCAL burnVec IS nextnode:burnvector.
 LOCAL ispFlow IS 0.
 LOCAL ispThrust is 0.
 LOCAL ispTotal IS 0.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
-LOCAL nodeBurn IS nextnode:burnvector.
 LOCAL nodeTime IS 0.
-LOCAL nodeVang IS vang(nodeBurn, nextnode:burnvector).
-LOCAL nodeVdot IS vdot(nodeBurn, nextnode:burnvector).
+LOCAL nodeVang IS vang(burnVec, nextnode:burnvector).
+LOCAL nodeVdot IS vdot(burnVec, nextnode:burnvector).
 
 FOR e IN elist {
     IF e:ignition {
@@ -50,7 +50,7 @@ PRINT "--------------------------".
 PRINT " ".
 PRINT " Node angle    =".
 PRINT " Node delta-V  =".
-PRINT " Node vang     =".
+PRINT " Node error    =".
 PRINT " Node vdot     =".
 PRINT "--------------------------".
 
@@ -63,26 +63,31 @@ UNTIL sas {
 
       IF NOT modeBurn AND nextnode:eta <= nodeTime {
             SET modeBurn TO TRUE.
+            SET burnVec TO nextnode:burnvector.
             LOCK throttle TO throttleCtrl.
       }
 
       SET burnTime TO burn_time().
       SET maxAccel TO ship:availablethrust / ship:mass.
       SET nodeTime TO burnTime * 0.5.
-      SET nodeVang TO vang(nodeBurn, nextnode:burnvector).
-      SET nodeVdot TO vdot(nodeBurn, nextnode:burnvector).
-      SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector).
-      SET throttleCtrl TO min(1, nextnode:deltav:mag / maxAccel).
+      SET nodeVang TO vang(burnVec, nextnode:burnvector).
+      SET nodeVdot TO vdot(burnVec:normalized, nextnode:burnvector:normalized).
+      // SET throttleCtrl TO min(1, nextnode:deltav:mag / maxAccel).
+      SET throttleCtrl TO min(1, burnTime).
+
+      IF throttleCtrl < 1 { SET steeringCtrl TO lookdirup(burnVec, facing:topvector).
+      } ELSE { SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector). }
 
       PRINT round(burnTime,1) + "    "  at(17,2).
       PRINT round(nodeTime,1) + "    " at(17,3).
       PRINT round(nextnode:eta,1) + "    " at(17,4).
-      PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
+      PRINT round(nodeVang,3) + "      " at(17,7).
       PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
-      PRINT round(nodeVang,3) + "      " at(17,9).
+      PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,9).
       PRINT round(nodeVdot,3) + "      " at(17,10).
 
-      IF nextnode:deltav:mag < 0.001 OR nodeVang > 45 OR nodeVdot < 0.999 { BREAK. }
+      // IF nextnode:deltav:mag < 0.001 OR nodeVang > 45 OR nodeVdot < 0 { BREAK. }
+      IF nextnode:deltav:mag < 0.001 OR nodeVang > 90 { BREAK. }
 
       WAIT 0.
 }
