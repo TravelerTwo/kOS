@@ -4,8 +4,9 @@ SET terminal:height TO 20.
 SET terminal:width TO 40.
 
 FUNCTION burn_time {
-    LOCAL burnFlow IS ship:availablethrust / (ispTotal * 9.80665).
-    LOCAL burnMass IS ship:mass / constant():e^(nextnode:deltav:mag / (ispTotal * 9.80665)).
+    LOCAL ve IS 9.80665 * ispTotal.
+    LOCAL burnFlow IS ship:availablethrust / ve.
+    LOCAL burnMass IS ship:mass / constant():e^(nextnode:deltav:mag / ve).
     RETURN (ship:mass - burnMass) / burnFlow.
 }
 
