@@ -18,9 +18,7 @@ LOCAL burnVec IS nextnode:burnvector.
 LOCAL ispFlow IS 0.
 LOCAL ispThrust is 0.
 LOCAL ispTotal IS 0.
-LOCAL maxAccel IS ship:availablethrust / ship:mass.
 LOCAL nodeTime IS 0.
-LOCAL nodeVang IS vang(burnVec, nextnode:burnvector).
 
 FOR e IN elist {
     IF e:ignition {
@@ -66,9 +64,7 @@ UNTIL sas {
       }
 
       SET burnTime TO burn_time().
-      SET maxAccel TO ship:availablethrust / ship:mass.
       SET nodeTime TO burnTime * 0.5.
-      SET nodeVang TO vang(burnVec, nextnode:burnvector).
       SET throttleCtrl TO min(1, burnTime).
 
       IF throttleCtrl < 1 { SET steeringCtrl TO lookdirup(burnVec, facing:topvector).
@@ -78,10 +74,9 @@ UNTIL sas {
       PRINT round(nodeTime,1) + "    " at(17,3).
       PRINT round(nextnode:eta,1) + "    " at(17,4).
       PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
-      PRINT round(nodeVang,2) + "      " at(17,8).
-      PRINT round(nextnode:deltav:mag,3) + "      " at(17,9).
+      PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
 
-      IF nextnode:deltav:mag < 0.001 OR nodeVang > 90 { BREAK. }
+      IF nextnode:deltav:mag < 0.001 OR vang(burnVec, nextnode:burnvector) > 90 { BREAK. }
 
       WAIT 0.
 }
