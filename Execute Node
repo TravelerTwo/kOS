@@ -40,13 +40,12 @@ LOCAL steeringCtrl IS lookdirup(nextnode:burnvector, facing:topvector).
 LOCAL throttleCtrl IS 0.
 
 PRINT " ".
-PRINT " ISP           = " + round(ispTotal,1).
 PRINT " Burn time     =".
 PRINT " Half time     =".
 PRINT " Node ETA      =".
 PRINT "--------------------------".
 PRINT " ".
-PRINT " Error steer   =".
+PRINT " ISP           = " + round(ispTotal,1).
 PRINT " Node angle    =".
 PRINT " Node delta-V  =".
 PRINT "--------------------------".
@@ -71,9 +70,9 @@ UNTIL sas {
       IF throttleCtrl < 1 { SET steeringCtrl TO lookdirup(burnVec, facing:topvector).
       } ELSE { SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector). }
 
-      PRINT round(burnTime,1) + "    "  at(17,2).
-      PRINT round(nodeTime,1) + "    " at(17,3).
-      PRINT round(nextnode:eta,1) + "    " at(17,4).
+      PRINT round(burnTime,1) + "    "  at(17,1).
+      PRINT round(nodeTime,1) + "    " at(17,2).
+      PRINT round(nextnode:eta,1) + "    " at(17,3).
       PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
       PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
 
