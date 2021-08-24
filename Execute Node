@@ -70,7 +70,7 @@ UNTIL sas {
       IF throttleCtrl < 1 { SET steeringCtrl TO lookdirup(burnVec, facing:topvector).
       } ELSE { SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector). }
 
-      PRINT round(burnTime,1) + "    " + round(nextnode:deltav:mag / (ship:availablethrust / ship:mass),1) + "   " at(17,1).
+      PRINT round(burnTime,1) + "    " at(17,1).
       PRINT round(nodeTime,1) + "    " at(17,2).
       PRINT round(nextnode:eta,1) + "    " at(17,3).
       PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
