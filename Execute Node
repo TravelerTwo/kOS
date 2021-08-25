@@ -18,7 +18,6 @@ LOCAL burnTime IS 0.
 LOCAL burnVec IS nextnode:burnvector.
 LOCAL ispFlow IS 0.
 LOCAL ispThrust is 0.
-LOCAL ispTotal IS 0.
 LOCAL nodeTime IS 0.
 
 FOR e IN elist {
@@ -32,7 +31,7 @@ FOR e IN elist {
     WAIT 0.
 }
 
-SET ispTotal TO ispThrust / (ispFlow * 9.80665).
+LOCAL ispTotal IS ispThrust / (ispFlow * 9.80665).
 
 // SYSTEM CONTROL.
 LOCAL modeBurn IS FALSE.
@@ -76,7 +75,7 @@ UNTIL sas {
       PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
       PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
 
-      IF nextnode:deltav:mag < 0.001 OR vang(burnVec, nextnode:burnvector) > 90 { BREAK. }
+      IF modeBurn AND (nextnode:deltav:mag < 0.001 OR vang(burnVec, nextnode:burnvector) > 90) { BREAK. }
 
       WAIT 0.
 }
