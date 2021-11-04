@@ -30,7 +30,7 @@ FUNCTION new_parameter {
             IF i > 2 { SET i TO 0. }
 
         } ELSE IF char = terminal:input:enter {
-            IF input <> "" { SET lex_axis[list_axis[i]] TO input:toscalar. }
+            IF input <> "" { SET lex_axis[lex_axis:keys[i]] TO input:toscalar. }
             SET input TO "".
             PRINT "       " at(15,8).
         }
@@ -75,7 +75,6 @@ FUNCTION vdot_d {
 
 // LISTS.
 LOCAL lex_axis IS lex("fore", 0, "star", 0, "top", 0).
-LOCAL list_axis IS list("fore", "star", "top").
 LOCAL list_num IS list("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", ".").
 
 // VARIABLES.
