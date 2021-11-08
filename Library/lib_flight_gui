@@ -85,8 +85,8 @@ LOCAL box_main IS window:addhlayout().
                 box_target_labels:addspacing(28).
 
                 LOCAL label_runway IS label_maker(box_target_labels, "Runway", 0).
+                LOCAL label_run_algn IS label_maker(box_target_labels, " - Alignment", 15, rgb(1,1,1)).
                 LOCAL label_run_angle IS label_maker(box_target_labels, " - Angle", 15, rgb(1,1,1)).
-                LOCAL label_run_dot IS label_maker(box_target_labels, " - D-product", 15, rgb(1,1,1)).
                 LOCAL label_run_dist IS label_maker(box_target_labels, " - Distance", 15, rgb(1,1,1)).
                 LOCAL label_run_time IS label_maker(box_target_labels, " - Time to", 15, rgb(1,1,1)).
                 box_target_labels:addspacing(10).
@@ -100,8 +100,8 @@ LOCAL box_main IS window:addhlayout().
                 GLOBAL readout_loc_dist IS label_maker(box_target_readouts, "", 15).
                 GLOBAL readout_loc_time IS label_maker(box_target_readouts, "", 15).
                 box_target_readouts:addspacing(55).
+                GLOBAL readout_run_algn IS label_maker(box_target_readouts, "", 15).
                 GLOBAL readout_run_angle IS label_maker(box_target_readouts, "", 15).
-                GLOBAL readout_run_dot IS label_maker(box_target_readouts, "", 15).
                 GLOBAL readout_run_dist IS label_maker(box_target_readouts, "", 15).
                 GLOBAL readout_run_time IS label_maker(box_target_readouts, "", 15).
 
