@@ -1,0 +1,108 @@
+GLOBAL window IS gui(416).
+
+SET window:x TO 50.
+SET window:y TO 60.
+
+FUNCTION label_maker {
+    PARAMETER container, str, int, color IS rgb(0.7176471, 0.9960784, 0).
+    LOCAL placeholder IS container:addlabel(str).
+    SET placeholder:style:height TO int.
+    SET placeholder:style:textcolor TO color.
+    WAIT 0.
+
+    RETURN placeholder.
+}
+
+LOCAL box_main IS window:addhlayout().
+    LOCAL box_labels IS box_main:addvlayout().
+        box_labels:addspacing(29).
+        LOCAL labels_aero IS label_maker(box_labels, "Aerodynamic pressure", 21, rgb(1,1,1)).
+        LOCAL labels_atmo IS label_maker(box_labels, "Atmospheric pressure", 21, rgb(1,1,1)).
+        LOCAL labels_lat IS label_maker(box_labels, "Latitude", 21, rgb(1,1,1)).
+        LOCAL labels_lng IS label_maker(box_labels, "Longitude", 21, rgb(1,1,1)).
+        LOCAL labels_mach IS label_maker(box_labels, "Mach number", 21, rgb(1,1,1)).
+        box_labels:addspacing(20).
+        LOCAL labels_aoa IS label_maker(box_labels, "Angle of attack", 15, rgb(1,1,1)).
+        LOCAL labels_ba IS label_maker(box_labels, "Bank angle", 15, rgb(1,1,1)).
+        LOCAL labels_pa IS label_maker(box_labels, "Pitch angle", 15, rgb(1,1,1)).
+        LOCAL labels_roc IS label_maker(box_labels, "Rate of climb", 15, rgb(1,1,1)).
+        LOCAL labels_tr IS label_maker(box_labels, "Turn radius", 15, rgb(1,1,1)).
+        box_labels:addspacing(20).
+        LOCAL labels_be IS label_maker(box_labels, "Bank error", 15, rgb(1,1,1)).
+        LOCAL labels_pe IS label_maker(box_labels, "Pitch error", 15, rgb(1,1,1)).
+        LOCAL labels_pidbank IS label_maker(box_labels, "PIDBank error", 15, rgb(1,1,1)).
+        LOCAL labels_pidpitch IS label_maker(box_labels, "PIDPitch error", 15, rgb(1,1,1)).
+        LOCAL labels_pidsuper IS label_maker(box_labels, "PIDSupersonic error", 15, rgb(1,1,1)).
+        LOCAL labels_pidthrot IS label_maker(box_labels, "PIDThrot error", 15, rgb(1,1,1)).
+
+    LOCAL box_readouts IS box_main:addvlayout().
+        SET box_readouts:style:width TO 60.
+        box_readouts:addspacing(29).
+        GLOBAL readouts_aero IS label_maker(box_readouts, "", 21).
+        GLOBAL readouts_atmo IS label_maker(box_readouts, "", 21).
+        GLOBAL readouts_lat IS label_maker(box_readouts, "", 21).
+        GLOBAL readouts_lng IS label_maker(box_readouts, "", 21).
+        GLOBAL readouts_mach IS label_maker(box_readouts, "", 21).
+        box_readouts:addspacing(20).
+        GLOBAL readouts_aoa IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_ba IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_pa IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_roc IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_tr IS label_maker(box_readouts, "", 15).
+        box_readouts:addspacing(20).
+        GLOBAL readouts_be IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_pe IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_pidbank IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_pidpitch IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_pidsuper IS label_maker(box_readouts, "", 15).
+        GLOBAL readouts_pidthrot IS label_maker(box_readouts, "", 15).
+
+    LOCAL box_right IS box_main:addvlayout().
+        LOCAL box_right_top IS box_right:addhlayout().
+            LOCAL box_control IS box_right_top:addvlayout().
+                LOCAL control_label IS box_control:addlabel("CONTROL").
+                SET control_label:style:align TO "Center".
+                GLOBAL control_altitude IS box_control:addtextfield(round(apoapsis):tostring).
+                GLOBAL control_heading IS box_control:addtextfield(round(heading_of(facing:vector)):tostring).
+                GLOBAL control_latitude IS box_control:addtextfield(round(ship:latitude):tostring).
+                GLOBAL control_longitude IS box_control:addtextfield(round(ship:longitude):tostring).
+                GLOBAL control_mach IS box_control:addtextfield("0.5").
+
+            GLOBAL box_modes IS box_right_top:addvlayout().
+                LOCAL modes_label IS box_modes:addlabel("MODES").
+                SET modes_label:style:align TO "Center".
+                GLOBAL mode_cruise IS box_modes:addradiobutton("Cruise", TRUE).
+                GLOBAL mode_emergency IS box_modes:addradiobutton("Emergency").
+                GLOBAL mode_landing IS box_modes:addradiobutton("Landing").
+                GLOBAL mode_location IS box_modes:addradiobutton("Location").
+
+        LOCAL box_target IS box_right:addhbox().
+            LOCAL box_target_labels IS box_target:addvlayout().
+                SET box_target_labels:style:width TO 80.
+                LOCAL label_location IS label_maker(box_target_labels, "Location", 0).
+                LOCAL label_loc_dist IS label_maker(box_target_labels, " - Distance", 15, rgb(1,1,1)).
+                LOCAL label_loc_time IS label_maker(box_target_labels, " - Time to", 15, rgb(1,1,1)).
+                box_target_labels:addspacing(28).
+
+                LOCAL label_runway IS label_maker(box_target_labels, "Runway", 0).
+                LOCAL label_run_angle IS label_maker(box_target_labels, " - Angle", 15, rgb(1,1,1)).
+                LOCAL label_run_dot IS label_maker(box_target_labels, " - D-product", 15, rgb(1,1,1)).
+                LOCAL label_run_dist IS label_maker(box_target_labels, " - Distance", 15, rgb(1,1,1)).
+                LOCAL label_run_time IS label_maker(box_target_labels, " - Time to", 15, rgb(1,1,1)).
+                box_target_labels:addspacing(10).
+
+                GLOBAL menu_runways IS box_target_labels:addpopupmenu().
+                    SET menu_runways:style:width to 176.
+
+            LOCAL box_target_readouts IS box_target:addvlayout().
+                SET box_target_readouts:style:height TO 190.
+                box_target_readouts:addspacing(30).
+                GLOBAL readout_loc_dist IS label_maker(box_target_readouts, "", 15).
+                GLOBAL readout_loc_time IS label_maker(box_target_readouts, "", 15).
+                box_target_readouts:addspacing(55).
+                GLOBAL readout_run_angle IS label_maker(box_target_readouts, "", 15).
+                GLOBAL readout_run_dot IS label_maker(box_target_readouts, "", 15).
+                GLOBAL readout_run_dist IS label_maker(box_target_readouts, "", 15).
+                GLOBAL readout_run_time IS label_maker(box_target_readouts, "", 15).
+
+window:show().
