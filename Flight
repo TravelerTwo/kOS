@@ -1,0 +1,321 @@
+// Sexy ground detection?
+// Set maximum roll dynamically.
+// Using moment of inertia?
+// Switch heading when passing pole?
+// Compensate bank when diving?
+// Fine-tune supersonic PID, test with variety of craft at different speeds/altitudes.
+// Reduce throttle when turning.
+// Emergency landings on land needs terrain detection?
+
+PARAMETER showVecs IS FALSE.
+
+CLEARSCREEN.
+SET config:ipu TO 2000. // ~975.
+SET steeringmanager:rollcontrolanglerange to 180.
+
+FUNCTION circle_dist {
+    PARAMETER vec.
+    LOCAL circleAlt IS altitude + body:radius.
+    LOCAL circlePos IS ship:position - body:position.
+    LOCAL circleTarget IS vec - body:position.
+    RETURN vang(circlePos, circleTarget) / 180 * (constant:pi * circleAlt).
+}
+
+FUNCTION glide_slope {
+    LOCAL glideDist IS min(20000, circleDist).
+    LOCAL glideHeading IS (runway_start:position - runway_end:position):normalized.
+    LOCAL glideHeight IS (glideHeading - body:position):normalized * sin(3).
+    RETURN (glideHeading + glideHeight):normalized * glideDist.
+}
+
+FUNCTION heading_of {
+    PARAMETER vec.
+    LOCAL trig_x IS vdot(heading(90, 0):vector, vec).
+    LOCAL trig_y IS vdot(heading(0, 0):vector, vec).
+    RETURN mod(arctan2(trig_x, trig_y) + 360, 360).
+}
+
+FUNCTION nav_bank {
+    LOCAL t IS vxcl(up:vector, navTarget).
+    LOCAL v IS vxcl(up:vector, velocity:surface).
+    LOCAL hdgError IS vang(t, v).
+    IF vdot(vcrs(up:vector, v), t) > 0 { SET hdgError TO -hdgError. }
+
+    SET bankTarget TO PIDBank:update(time:seconds, hdgError).
+    RETURN angleaxis(bankTarget, -facing:vector) * up:vector.
+}
+
+FUNCTION nav_circle {
+    PARAMETER vec.
+    SET vec:mag TO min(turnRadius, vec:mag).
+    LOCAL theta IS arcsin(min(10000, vec:mag) / vec:mag).
+    RETURN angleaxis(theta * sign, up:vector) * vec.
+}
+
+FUNCTION nav_pitch {
+    IF modeFlight <> "" { SET PIDPitch:setpoint TO (nav_alt - altitude) / climbRate. }.
+    LOCAL pitchAccel IS PIDPitch:update(time:seconds, verticalspeed).
+
+    IF mach > 1 {
+        SET PIDSupersonic:setpoint TO pitchAccel.
+        SET pitchAccel TO PIDSupersonic:update(time:seconds, vdot(ship:angularvel, facing:vector)).
+    }
+
+    LOCAL pitchTarget IS arccos(pitchAccel / 1).
+    LOCAL vecPitch IS angleaxis(pitchTarget, vcrs(navBank, velocity:surface)) * navBank.
+    LOCAL vecYaw IS vcrs(up:vector, vecPitch):normalized * (tan(bankTarget / 10)).
+    RETURN vecPitch + vecYaw.
+}
+
+FUNCTION runway_approach {
+    IF circle_dist(lex_runways[menu_runways:value][0]:position) < circle_dist(lex_runways[menu_runways:value][1]:position) {
+        SET runway_start TO lex_runways[menu_runways:value][0].
+        SET runway_end TO lex_runways[menu_runways:value][1].
+
+    } ELSE {
+        SET runway_start TO lex_runways[menu_runways:value][1].
+        SET runway_end TO lex_runways[menu_runways:value][0].
+    }
+
+    SET runwayPos TO runway_start:altitudeposition(max(0, runway_start:terrainheight)).
+    SET runwayVdot TO vdot(vcrs(runwayPos, up:vector):normalized, (runway_end:position - runway_start:position):normalized).
+    SET sign TO CHOOSE 1 IF runwayVdot >= 0 ELSE -1.
+
+    IF modeFlight = "Landing" {
+        SET control_latitude:text TO round(runway_start:lat,2):tostring.
+        SET control_longitude:text TO round(runway_start:lng,2):tostring.
+    }
+}
+
+// LISTS.
+IF body = kerbin {
+    GLOBAL lex_runways IS lexicon(
+        "Dessert Airfield", list(latlng(-6.600582, -144.040743), latlng(-6.447081, -144.038508)), 
+        "Island Airfield", list(latlng(-1.517733, -71.968412), latlng(-1.516328, -71.853492)),
+        "KSC", list(latlng(-0.048595, -74.724865), latlng(-0.050173, -74.491625))
+    ).
+}
+
+// GUI.
+PRINT "Switching to alternate GUI...".
+core:doevent("close terminal").
+RUNPATH("0:/lib_flight_gui").
+
+SET menu_runways:options TO lex_runways:keys.
+SET menu_runways:index TO 0.
+
+// PHYSICAL PROPERTIES.
+LOCAL g IS body:mu / body:position:sqrmagnitude.
+LOCAL p IS body:atm:altitudepressure(altitude).
+
+// VARIABLES.
+LOCAL bankAngle IS arctan2(-vdot(facing:starvector, up:vector), vdot(facing:topvector, up:vector)).
+LOCAL bankTarget IS 0.
+LOCAL climbRate IS 10.
+LOCAL landingSpeed IS 0.2.
+LOCAL mach IS sqrt(2 / body:atm:adiabaticindex * ship:q / p).
+LOCAL PIDBank IS PIDLoop(2.5, 0, 3, -45, 45).
+LOCAL PIDPitch IS PIDLoop(0.022, 0.008, 0.025, -0.5, 0.5).
+LOCAL PIDSupersonic IS PIDLoop(0.4, 0.6, 0.002, -0.25, 0.25).
+LOCAL PIDThrot IS PIDLoop(0.1, 0.011, 0.15, 0, 1).
+LOCAL runwayVdot IS 0.
+LOCAL sign IS 1.
+
+LOCAL nav_alt IS round(apoapsis).
+LOCAL nav_hdg IS heading_of(facing:vector).
+LOCAL nav_lat IS ship:latitude.
+LOCAL nav_lng IS ship:longitude.
+LOCAL nav_mach IS 0.5.
+
+LOCAL runway_start IS lex_runways[menu_runways:value][0].
+LOCAL runway_end IS lex_runways[menu_runways:value][1].
+
+LOCAL c IS airspeed / mach.
+LOCAL circleDist IS body:radius.
+LOCAL glideSlope IS glide_slope().
+LOCAL navBank IS facing:vector.
+LOCAL navGeo IS latlng(nav_lat, nav_lng).
+LOCAL navPitch IS facing:vector.
+LOCAL navTarget IS facing:vector.
+LOCAL runwayPos IS runway_start:position.
+LOCAL turnRadius IS PIDThrot:setpoint^2 / g / tan(40).
+
+// SYSTEM CONTROL.
+LOCAL modeFlight IS "Cruise".
+LOCAL modeLanding IS FALSE.
+LOCAL steeringCtrl IS facing:vector.
+LOCAL throttleCtrl IS 0.
+
+// VECDRAWS.
+LOCAL vd_b IS vecdraw(ship:position, ship:position, blue, "", 1.0, showVecs).
+LOCAL vd_p IS vecdraw(ship:position, ship:position, yellow, "", 1.0, showVecs).
+LOCAL vd_t IS vecdraw(ship:position, ship:position, green, "", 1.0, showVecs).
+LOCAL vd_y IS vecdraw(ship:position, ship:position, red, "", 1.0, showVecs).
+
+rcs OFF.
+sas OFF.
+LOCK steering TO steeringCtrl.
+LOCK throttle TO throttleCtrl.
+
+SET control_altitude:onconfirm TO { PARAMETER p. SET nav_alt TO p:toscalar(altitude). }.
+SET control_heading:onconfirm TO { PARAMETER p. SET nav_hdg TO p:toscalar(heading_of(facing:vector)). }.
+SET control_mach:onconfirm TO { PARAMETER p. SET nav_mach TO p:toscalar(mach). }.
+SET menu_runways:onchange TO { PARAMETER p. runway_approach(). }.
+
+SET box_modes:onradiochange TO {
+    PARAMETER p.
+    SET modeFlight TO p:text.
+    SET modeLanding TO FALSE.
+    runway_approach().
+}.
+
+SET control_latitude:onconfirm TO {
+    PARAMETER p.
+    SET nav_lat TO p:toscalar(ship:latitude).
+    SET navGeo TO latlng(nav_lat, nav_lng).
+}.
+
+SET control_longitude:onconfirm TO {
+    PARAMETER p.
+    SET nav_lng TO p:toscalar(ship:longitude).
+    SET navGeo TO latlng(nav_lat, nav_lng).
+}.
+
+UNTIL sas {
+
+      IF modeFlight = "Cruise" {
+
+            SET navTarget TO heading(nav_hdg, 0):vector.
+            SET navTarget:mag TO max(c, airspeed) * 120.
+            SET climbRate TO 10 * max(1, mach^2).
+
+      } ELSE IF modeFlight = "Emergency" {
+
+            WAIT 1.
+            LOCAL x IS altitude / tan(6).
+
+            SET landingSpeed TO 0.15.
+            SET modeFlight TO "Landing".
+            SET modeLanding TO TRUE.
+            SET runway_start TO body:geopositionof(velocity:surface:normalized * x).
+            SET runway_end TO body:geopositionof(velocity:surface:normalized * (x + 2000)).
+            SET runwayPos TO runway_start:altitudeposition(max(0, runway_start:terrainheight)).
+
+            SET control_latitude:text TO round(runway_start:lat,2):tostring.
+            SET control_longitude:text TO round(runway_start:lng,2):tostring.
+
+      } ELSE IF modeFlight = "Landing" {
+
+            SET glideSlope TO glide_slope().
+            SET runwayVdot TO vdot(vcrs(runwayPos, up:vector):normalized, (runway_end:position - runwayPos):normalized).
+
+            IF NOT modeLanding {
+                  SET nav_alt TO max(1000, body:altitudeof(runwayPos + glideSlope)). // Descend more slowly during cruise?
+                  SET nav_mach TO max(0.5, min(nav_mach, navTarget:mag / 60 / c)).
+                  SET navTarget TO runwayPos + glideSlope + vcrs((glideSlope - body:position), glideSlope):normalized * sign * min(10000, turnRadius).
+                  SET navTarget TO nav_circle(navTarget).
+
+                  SET readout_loc_dist:text TO round(navTarget:mag):tostring.
+                  SET readout_loc_time:text TO round(vdot(velocity:surface:normalized, navTarget) / airspeed,1):tostring.
+                  SET readout_run_angle:text TO round(abs(runway_start:bearing),2):tostring.
+
+                  IF abs(runway_start:bearing) < 3 AND abs(runwayVdot) < 0.05 AND circleDist > 10000 { SET modeLanding TO TRUE. }
+
+            } ELSE {
+                  SET nav_alt TO body:altitudeof(navTarget).
+                  SET nav_mach TO max(landingSpeed, min(nav_mach, circleDist / 60 / c)).
+                  SET navTarget TO runwayPos + glideSlope * 0.8.
+
+                  SET control_mach:text TO round(nav_mach,2):tostring.
+                  SET readout_run_angle:text TO round(90 - vang(up:vector, velocity:surface),2):tostring.
+
+                  IF circleDist < 500 {
+                        SET modeFlight TO "".
+                        SET navTarget TO runway_end:position.
+                        SET PIDPitch:setpoint TO min(-1, PIDPitch:setpoint + 2).
+                        gear ON.
+                  }
+            }
+
+            SET control_altitude:text TO round(nav_alt):tostring.
+            SET control_heading:text TO round(runway_start:heading):tostring.
+            SET readout_run_algn:text TO round(runwayVdot,3):tostring.
+
+      } ELSE IF modeFlight = "Location" {
+
+            SET circleDist TO circle_dist(navGeo:position).
+            SET nav_mach TO max(0.5, min(nav_mach, circleDist / 60 / c)).
+            SET navTarget TO nav_circle(navGeo:altitudeposition(altitude)).
+
+            SET control_heading:text TO round(navGeo:heading):tostring.
+            SET readout_loc_dist:text TO round(circleDist):tostring.
+            SET readout_loc_time:text TO round(vdot(velocity:surface:normalized, navTarget) / airspeed,1):tostring.
+      }
+
+      IF NOT brakes AND PIDThrot:error < -50 { brakes ON. }
+      ELSE IF brakes AND PIDThrot:error > -10 { brakes OFF. }
+
+      IF modeFlight <> "Cruise" {
+            SET climbRate TO max(1, navTarget:mag / airspeed). // Set to something smaller?
+            SET nav_hdg TO heading_of(facing:vector).
+      }
+
+      SET bankAngle TO arctan2(-vdot(facing:starvector, up:vector), vdot(facing:topvector, up:vector)).
+      SET c TO airspeed / mach.
+      SET g TO body:mu / body:position:sqrmagnitude.
+      SET p TO body:atm:altitudepressure(altitude).
+      SET circleDist TO circle_dist(runwayPos).
+      SET mach TO sqrt(2 / body:atm:adiabaticindex * ship:q / p).
+      SET navBank TO nav_bank().
+      SET navPitch TO nav_pitch().
+      SET PIDThrot:setpoint TO c * nav_mach.
+      // SET PIDThrot:setpoint TO c * min(nav_mach, max(nav_mach - (nav_mach - 0.5), abs(PIDBank:error) / (90 / (nav_mach - 0.49)))).
+      SET runwayPos TO runway_start:altitudeposition(max(0, runway_start:terrainheight)).
+      SET turnRadius TO PIDThrot:setpoint^2 / g / tan(40).
+      SET steeringCtrl TO lookdirup(navPitch, navBank).
+      SET throttleCtrl TO PIDThrot:update(time:seconds, airspeed).
+
+      SET readouts_aero:text TO round(ship:q,3):tostring.
+      SET readouts_atmo:text TO round(p,3):tostring.
+      SET readouts_lat:text TO round(ship:latitude,3):tostring.
+      SET readouts_lng:text TO round(ship:longitude,3):tostring.
+      SET readouts_mach:text TO round(mach,2):tostring.
+      SET readouts_aoa:text TO round(vang(vxcl(facing:starvector, facing:vector), velocity:surface),2):tostring.
+      SET readouts_ba:text TO round(bankAngle,2):tostring.
+      SET readouts_pa:text TO round(90 - vang(up:vector, facing:vector),2):tostring.
+      SET readouts_roc:text TO round(climbRate,1):tostring.
+      SET readouts_tr:text TO round(turnRadius):tostring.
+      SET readouts_be:text TO round(bankTarget - bankAngle,2):tostring.
+      SET readouts_pe:text TO round(vang(navPitch, facing:vector),2):tostring.
+      SET readouts_pidbank:text TO round(PIDBank:error,2):tostring.
+      SET readouts_pidpitch:text TO round(PIDPitch:error,2):tostring.
+      SET readouts_pidsuper:text TO round(PIDSupersonic:error,2):tostring.
+      SET readouts_pidthrot:text TO round(PIDThrot:error,2):tostring.
+      SET readout_run_dist:text TO round(circleDist):tostring.
+      SET readout_run_time:text TO round(vdot(velocity:surface:normalized, runwayPos) / airspeed,1):tostring.
+
+      IF showVecs {
+            SET vd_b:vec TO navBank:normalized * verticalspeed.
+            SET vd_p:vec TO navPitch:normalized * airspeed.
+            SET vd_t:vec TO navTarget.
+            SET vd_y:vec TO vcrs(up:vector, navPitch):normalized * bankTarget / 2.
+      }
+
+      IF ship:status = "landed" OR ship:status = "splashed" {
+            brakes ON.
+            chutes ON.
+            sas ON.
+            BREAK.
+      }
+
+      WAIT 0.
+}
+
+clearguis().
+clearvecdraws().
+core:doevent("open terminal").
+steeringmanager:resettodefault().
+PRINT "Resuming normal function...".
+SET ship:control:pilotmainthrottle TO 0.
+SET throttleCtrl TO 0.
+UNLOCK ALL.
