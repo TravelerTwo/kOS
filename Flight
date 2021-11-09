@@ -10,7 +10,7 @@
 PARAMETER showVecs IS FALSE.
 
 CLEARSCREEN.
-SET config:ipu TO 2000. // ~975.
+SET config:ipu TO 1000. // ~975?
 SET steeringmanager:rollcontrolanglerange to 180.
 
 FUNCTION circle_dist {
