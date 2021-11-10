@@ -189,7 +189,7 @@ UNTIL sas {
 
       IF desiredInc <> 0 AND desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
 
-      IF alt:radar > navAlt { SET steeringCtrl TO heading(navYaw, navPitch). }
+      IF airspeed > 100 AND alt:radar > navAlt { SET steeringCtrl TO heading(navYaw, navPitch). }
       ELSE { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
 
       SET g TO body:mu / body:position:sqrmagnitude.
