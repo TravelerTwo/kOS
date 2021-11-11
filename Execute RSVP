@@ -1,40 +1,65 @@
+// Add "earliest departure" parameter?
+
 PARAMETER dest.
+PARAMETER desiredDeparture IS 0.
 PARAMETER desiredOrbit IS "circular".
 
 CLEARSCREEN.
 
-// FUNCTION max_duration {
-//     IF key = Enter {
-//         SET x TO TRUE.
-//     }
-// }
+FUNCTION max_duration {
+    LOCAL char IS terminal:input:getchar().
 
-// LOCAL x IS FALSE.
+    IF char:matchespattern("[0-9]") {
+        SET input TO input + char.
+        PRINT input at(i,4).
 
-// PRINT body:name + ": " + body:obt:period.
+    } ELSE IF char = terminal:input:backspace {
+        SET i TO 10.
+        SET input TO "".
+        PRINT "          " at(i,4).
 
-// print dest:substring(0,1):toupper + dest:substring(1,3) + ": " dest:obt:period.
-// print dest:substring(0,1):toupper + dest:substring(1,dest:length-1) + ": " dest:obt:period.
+    } ELSE IF char = terminal:input:enter {
+        IF input <> "" { SET new_max TO input:toscalar * 21600. }
+        SET done TO TRUE.
+    }
+}
 
-// PRINT "Synodic: " + abs(body:obt:period * dest:obt:period / (body:obt:period - dest:obt:period)).
-// Convert from seconds to days for prints, convert back for use.
+LOCAL done IS FALSE.
+LOCAL i IS 10.
+LOCAL input IS "".
+LOCAL new_max IS 0.
 
-// PRINT " Gael: 12345
-// PRINT " Iota: 1234
-// PRINT " Synodic: 1371
-// PRINT " New max: _". // Blinking?
+SET desiredDeparture TO desiredDeparture * 21600.
 
-// UNTIL x {
-//
-//       max_duration().
-//
-//       IF something_other_than_x { BREAK. }
-//
-//       WAIT 0.
-// }
+PRINT " ".
+PRINT " " + body:name + ": " + time(body:obt:period):day + " (days)".
+PRINT " " + dest:name:substring(0,1):toupper + dest:name:substring(1,dest:name:length-1) + ": " + time(dest:obt:period):day.
+PRINT " Synodic: " + time(abs(body:obt:period * dest:obt:period / (body:obt:period - dest:obt:period))):day.
+PRINT " New max: _".
+PRINT " Leave blank to use default".
 
-// IF x {
-runoncepath("0:/rsvp/main").
-local options is lexicon("create_maneuver_nodes", "first", "verbose", true, "final_orbit_type", desiredOrbit).
-rsvp:goto(dest, options).
-// }
+UNTIL done {
+
+      IF terminal:input:haschar { max_duration(). }
+
+      IF abort { BREAK. }
+
+      IF mod(time:second,2) = 0 { PRINT "_" at(i + input:length,4). }
+      ELSE { PRINT " " at(i + input:length,4). }
+
+      WAIT 0.
+}
+
+IF done {
+    runoncepath("0:/rsvp/main").
+    local options is lexicon(
+        "verbose", true,
+        "create_maneuver_nodes", "first",
+        "earliest_departure", desiredDeparture,
+        "search_duration", new_max,
+        "final_orbit_type", desiredOrbit
+    ).
+    rsvp:goto(dest, options).
+}
+
+abort OFF.
