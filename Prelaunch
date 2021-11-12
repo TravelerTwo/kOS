@@ -61,4 +61,4 @@ UNTIL rcs {
 rcs OFF.
 kuniverse:timewarp:cancelwarp().
 WAIT UNTIL kuniverse:timewarp:issettled().
-IF launch { runpath("0:/launch",200000,inc). }
+IF launch { runpath("0:/launch",100000,inc). }
