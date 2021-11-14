@@ -40,7 +40,7 @@ IF body:atm:exists {
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
-      IF verticalspeed < -0.5 {
+      IF verticalspeed < -1 {
             SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
             SET throttleCtrl TO burnThrot.
 
