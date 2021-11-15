@@ -1,5 +1,4 @@
 PARAMETER dest.
-PARAMETER desiredDeparture IS 0.
 PARAMETER desiredOrbit IS "circular".
 
 CLEARSCREEN.
@@ -29,13 +28,11 @@ LOCAL input IS "".
 LOCAL desiredDuration IS 0.
 LOCAL syn_period IS abs(body:obt:period * dest:obt:period / (body:obt:period - dest:obt:period)).
 
-SET desiredDeparture TO time:seconds + max(120, desiredDeparture * 21600).
-
 PRINT " ".
-PRINT " Days: " + time:day.
-PRINT " " + body:name + ": " + time(body:obt:period):day + " (days)".
-PRINT " " + dest:name:substring(0,1):toupper + dest:name:substring(1,dest:name:length-1) + ": " + time(dest:obt:period):day.
-PRINT " Synodic: " + time(syn_period):day.
+PRINT " Calendar: " + time:calendar.
+PRINT " " + body:name + ": " + round(body:obt:period / 60 / 60 / 6).
+PRINT " " + dest:name:substring(0,1):toupper + dest:name:substring(1,dest:name:length-1) + ": " + round(dest:obt:period / 60 / 60 / 6).
+PRINT " Synodic: " + round(syn_period / 60 / 60 / 6).
 PRINT " New max: _".
 PRINT " Leave blank to use default".
 PRINT " ".
@@ -60,7 +57,6 @@ IF done {
     LOCAL options is lexicon(
         "verbose", true,
         "create_maneuver_nodes", "first",
-        "earliest_departure", desiredDeparture,
         "search_duration", desiredDuration,
         "final_orbit_periapsis", max(100000, dest:atm:height + 100000),
         "final_orbit_type", desiredOrbit
