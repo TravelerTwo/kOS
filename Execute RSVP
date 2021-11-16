@@ -1,3 +1,7 @@
+// When orbiting sun, use obt:period instead of body:obt:period.
+// When transferring to moon, use obt:period instead of body:obt:period.
+// When transferring to craft, ?
+
 PARAMETER dest.
 PARAMETER desiredOrbit IS "circular".
 
