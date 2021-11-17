@@ -1,6 +1,7 @@
 // When orbiting sun, use obt:period instead of body:obt:period.
 // When transferring to moon, use obt:period instead of body:obt:period.
 // When transferring to craft, ?
+// See if it's possible to reduce IPU use in fork?
 
 PARAMETER dest.
 PARAMETER desiredOrbit IS "circular".
