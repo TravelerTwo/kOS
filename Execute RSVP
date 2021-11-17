@@ -6,7 +6,7 @@ PARAMETER dest.
 PARAMETER desiredOrbit IS "circular".
 
 CLEARSCREEN.
-SET config:ipu TO 600.
+SET config:ipu TO 2000.
 
 FUNCTION new_param {
     LOCAL char IS terminal:input:getchar().
