@@ -4,9 +4,10 @@ SET terminal:height TO 20.
 SET terminal:width TO 40.
 
 FUNCTION burn_time {
+    PARAMETER dV.
     LOCAL ve IS 9.80665 * ispTotal.
     LOCAL burnFlow IS ship:availablethrust / ve.
-    LOCAL burnMass IS ship:mass / constant():e^(nextnode:deltav:mag / ve).
+    LOCAL burnMass IS ship:mass / constant():e^(dV / ve).
     RETURN (ship:mass - burnMass) / burnFlow.
 }
 
@@ -62,8 +63,8 @@ UNTIL sas {
             LOCK throttle TO throttleCtrl.
       }
 
-      SET burnTime TO burn_time().
-      SET nodeTime TO burnTime * 0.5.
+      SET burnTime TO burn_time(nextnode:deltav:mag).
+      SET nodeTime TO burn_time(nextnode:deltav:mag / 2).
       SET throttleCtrl TO min(1, burnTime).
 
       IF throttleCtrl < 1 { SET steeringCtrl TO lookdirup(burnVec, facing:topvector).
