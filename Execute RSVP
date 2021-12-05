@@ -1,75 +1,104 @@
-// When orbiting sun, use obt:period instead of body:obt:period.
-// When transferring to moon, use obt:period instead of body:obt:period.
-// When transferring to craft, ?
 // See if it's possible to reduce IPU use in fork?
-// Add terminal(GUI?) elements to select orbit type/orientation.
-// Do sequential terminal inputs? Destination > earliest departure > search duration > interval > time-of-flight > periapsis > type > orientation?
-// Use backspace (on an empty string?) do return to previous entry?
+// Days or hours for duration/interval?
+// IF days < 1 then hours?
+// Add safety check for input?
+// Remove interval?
 
 PARAMETER dest.
-PARAMETER desiredOrbit IS "circular".
 
 CLEARSCREEN.
 SET config:ipu TO 2000.
+SET terminal:height TO 25.
+SET terminal:width TO 50.
 
 FUNCTION new_param {
     LOCAL char IS terminal:input:getchar().
 
-    IF char:matchespattern("[0-9]") {
+    IF char:matchespattern("[a-z0-9]") {
         SET input TO input + char.
-        PRINT input at(i,5).
+        PRINT input at(15,n).
 
     } ELSE IF char = terminal:input:backspace {
-        SET i TO 10.
         SET input TO "".
-        PRINT "          " at(i,5).
+        PRINT "            " at(15,n).
 
     } ELSE IF char = terminal:input:enter {
-        IF input <> "" { SET desiredDuration TO input:toscalar * 21600. }
-        SET done TO TRUE.
+        IF input <> "" {
+            IF i < 2 { SET input TO input:toscalar * 21600. }
+            rsvp_settings:add(options[i], input).
+            PRINT input at(15,i+n+2).
+        }
+        PRINT "x" at(29,i+n+2).
+        PRINT "          " at(15,n).
+        SET i TO i + 1.
+        SET input TO "".
     }
 }
 
+// LISTS.
+LOCAL options IS list("search_duration", "search_interval").
+LOCAL rsvp_settings IS lex("verbose", true, "create_maneuver_nodes", "first").
+
+// SYSTEM CONTROL.
 LOCAL done IS FALSE.
-LOCAL i IS 10.
+LOCAL i IS 0.
 LOCAL input IS "".
-LOCAL desiredDuration IS 0.
-LOCAL syn_period IS abs(body:obt:period * dest:obt:period / (body:obt:period - dest:obt:period)).
+LOCAL n IS 15.
+LOCAL origin IS body.
+IF body = dest:body { SET origin TO ship. }
+
+LOCAL syn_period IS abs(origin:obt:period * dest:obt:period / (origin:obt:period - dest:obt:period)).
+
+IF dest:istype("body") {
+    rsvp_settings:add("final_orbit_periapsis", dest:atm:height + 100000).
+    options:add("final_orbit_type").
+    options:add("final_orbit_orientation").
+    SET n TO n + 2.
+}
 
 PRINT " ".
-PRINT " Calendar: " + time:calendar.
-PRINT " " + body:name + ": " + round(body:obt:period / 60 / 60 / 6).
-PRINT " " + dest:name:substring(0,1):toupper + dest:name:substring(1,dest:name:length-1) + ": " + round(dest:obt:period / 60 / 60 / 6).
-PRINT " Synodic: " + round(syn_period / 60 / 60 / 6).
-PRINT " New max: _".
-PRINT " Leave blank to use default".
+PRINT " Target      : " + dest:name:substring(0,1):toupper + dest:name:substring(1,dest:name:length-1).
 PRINT " ".
+PRINT " ORBITAL PERIODS".
+PRINT " Calendar    : " + time:calendar.
+PRINT " Synodic     : " + round(syn_period / 21600) + " (days), " + round(syn_period / 3600) + " (hours)".
+PRINT " Origin      : " + round(origin:obt:period / 21600).
+PRINT " Target      : " + round(dest:obt:period / 21600).
+PRINT " ".
+PRINT " DEFAULT VALUES".
+PRINT " Duration    : " + round(max(syn_period, max(origin:obt:period, dest:obt:period)) / 21600).
+PRINT " Interval    : " + round(min(origin:obt:period, dest:obt:period) / 2 / 21600).
+IF dest:istype("body") { PRINT " Orbit type  : none, (" + "circular":toupper + "), elliptical".
+                         PRINT " Orientation : (" + "prograde":toupper + "), polar, retrograde". }
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Leave blank to use default, enter to confirm".
+PRINT "       Input :".
+PRINT " ".
+PRINT " Duration    :             [   ]".
+PRINT " Interval    :             [   ]".
+IF dest:istype("body") { PRINT " Orbit type  :             [   ]".
+                         PRINT " Orientation :             [   ]". }
+PRINT "--------------------------".
 
 UNTIL done {
 
       IF terminal:input:haschar { new_param(). }
 
+      IF i >= options:length { SET done TO TRUE. }
+
       IF abort { BREAK. }
 
-      IF mod(time:second,2) = 0 { PRINT "_" at(i + input:length,5). }
-      ELSE { PRINT " " at(i + input:length,5). }
+      IF mod(time:second,2) = 0 { PRINT "_" at(15 + input:length,n). }
+      ELSE { PRINT " " at(15 + input:length,n). }
 
       WAIT 0.
 }
 
-IF desiredDuration = 0 { SET desiredDuration TO max(body:obt:period, max(dest:obt:period, syn_period)). }
+abort OFF.
 
 IF done {
     PRINT "Running search...".
     runoncepath("0:/rsvp/main").
-    LOCAL options is lexicon(
-        "verbose", true,
-        "create_maneuver_nodes", "first",
-        "search_duration", desiredDuration,
-        "final_orbit_periapsis", max(100000, dest:atm:height + 100000),
-        "final_orbit_type", desiredOrbit
-    ).
-    rsvp:goto(dest, options).
+    rsvp:goto(dest, rsvp_settings).
 }
-
-abort OFF.
