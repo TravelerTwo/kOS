@@ -7,36 +7,34 @@ SET steeringmanager:rollcontrolanglerange TO 90.
 IF NOT HASTARGET { PRINT "Select target..." at(0,0). }
 WAIT UNTIL HASTARGET.
 
-FUNCTION new_parameter {
-    IF terminal:input:haschar {
-        LOCAL char IS terminal:input:getchar().
+FUNCTION new_param {
+    LOCAL char IS terminal:input:getchar().
 
-        IF list_num:contains(char) {
-            SET input TO input + char.
-            PRINT input at(15,8).
+    IF list_num:contains(char) {
+        SET input TO input + char.
+        PRINT input at(15,8).
 
-        } ELSE IF char = terminal:input:backspace {
-            SET input TO "".
-            PRINT "       " at(15,8).
+    } ELSE IF char = terminal:input:backspace {
+        SET input TO "".
+        PRINT "       " at(15,8).
 
-        } ELSE IF char = terminal:input:upcursorone {
-            PRINT "  " at(2,9 + i).
-            SET i TO i - 1.
-            IF i < 0 { SET i TO 2. }
+    } ELSE IF char = terminal:input:upcursorone {
+        PRINT "  " at(2,9 + i).
+        SET i TO i - 1.
+        IF i < 0 { SET i TO 2. }
 
-        } ELSE IF char = terminal:input:downcursorone {
-            PRINT "  " at(2,9 + i).
-            SET i TO i + 1.
-            IF i > 2 { SET i TO 0. }
+    } ELSE IF char = terminal:input:downcursorone {
+        PRINT "  " at(2,9 + i).
+        SET i TO i + 1.
+        IF i > 2 { SET i TO 0. }
 
-        } ELSE IF char = terminal:input:enter {
-            IF input <> "" { SET lex_axis[lex_axis:keys[i]] TO input:toscalar. }
-            SET input TO "".
-            PRINT "       " at(15,8).
-        }
-
-        PRINT ">>" at(2,9 + i).
+    } ELSE IF char = terminal:input:enter {
+        IF input <> "" { SET lex_axis[lex_axis:keys[i]] TO input:toscalar. }
+        SET input TO "".
+        PRINT "       " at(15,8).
     }
+
+    PRINT ">>" at(2,9 + i).
 }
 
 FUNCTION RCS_output {
@@ -165,7 +163,7 @@ UNTIL NOT HASTARGET OR sas {
             SET offsetPos TO offsetFore + offsetStar + offsetTop.
             SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector).
 
-            new_parameter().
+            IF terminal:input:haschar { new_param(). }
             RCS_output(desiredPos - offsetPos).
 
             PRINT round(lex_axis:fore,2) + "      " at(15,9).
