@@ -1,6 +1,4 @@
 // See if it's possible to reduce IPU use in fork?
-// Days or hours for duration/interval?
-// IF days < 1 then hours?
 // Add safety check for input?
 // Remove interval?
 
@@ -24,7 +22,7 @@ FUNCTION new_param {
 
     } ELSE IF char = terminal:input:enter {
         IF input <> "" {
-            IF i < 2 { SET input TO input:toscalar * 21600. }
+            IF i < 2 { SET input TO input:toscalar * m. }
             rsvp_settings:add(options[i], input).
             PRINT input at(15,i+n+2).
         }
@@ -43,8 +41,10 @@ LOCAL rsvp_settings IS lex("verbose", true, "create_maneuver_nodes", "first").
 LOCAL done IS FALSE.
 LOCAL i IS 0.
 LOCAL input IS "".
+LOCAL m IS 21600.
 LOCAL n IS 15.
 LOCAL origin IS body.
+LOCAL s IS " (days)".
 IF body = dest:body { SET origin TO ship. }
 
 LOCAL syn_period IS abs(origin:obt:period * dest:obt:period / (origin:obt:period - dest:obt:period)).
@@ -56,20 +56,28 @@ IF dest:istype("body") {
     SET n TO n + 2.
 }
 
+IF syn_period / m < 2 {
+    SET m TO 3600.
+    SET s TO " (hours)".
+}
+
 PRINT " ".
 PRINT " Target      : " + dest:name:substring(0,1):toupper + dest:name:substring(1,dest:name:length-1).
 PRINT " ".
 PRINT " ORBITAL PERIODS".
 PRINT " Calendar    : " + time:calendar.
-PRINT " Synodic     : " + round(syn_period / 21600) + " (days), " + round(syn_period / 3600) + " (hours)".
-PRINT " Origin      : " + round(origin:obt:period / 21600).
-PRINT " Target      : " + round(dest:obt:period / 21600).
+PRINT " Origin      : " + round(origin:obt:period / m).
+PRINT " Target      : " + round(dest:obt:period / m).
+PRINT " Synodic     : " + round(syn_period / m) + s.
 PRINT " ".
 PRINT " DEFAULT VALUES".
-PRINT " Duration    : " + round(max(syn_period, max(origin:obt:period, dest:obt:period)) / 21600).
-PRINT " Interval    : " + round(min(origin:obt:period, dest:obt:period) / 2 / 21600).
-IF dest:istype("body") { PRINT " Orbit type  : none, (" + "circular":toupper + "), elliptical".
-                         PRINT " Orientation : (" + "prograde":toupper + "), polar, retrograde". }
+PRINT " Duration    : " + round(max(syn_period, max(origin:obt:period, dest:obt:period)) / m).
+PRINT " Interval    : " + round(min(origin:obt:period, dest:obt:period) / 2 / m).
+IF dest:istype("body") {
+    PRINT " Orbit type  : none, " + "circular":toupper + ", elliptical".
+    PRINT " Orientation : " + "prograde":toupper + ", polar, retrograde".
+}
+
 PRINT "--------------------------".
 PRINT " ".
 PRINT " Leave blank to use default, enter to confirm".
@@ -77,8 +85,11 @@ PRINT "       Input :".
 PRINT " ".
 PRINT " Duration    :             [   ]".
 PRINT " Interval    :             [   ]".
-IF dest:istype("body") { PRINT " Orbit type  :             [   ]".
-                         PRINT " Orientation :             [   ]". }
+IF dest:istype("body") {
+    PRINT " Orbit type  :             [   ]".
+    PRINT " Orientation :             [   ]".
+}
+
 PRINT "--------------------------".
 
 UNTIL done {
