@@ -24,6 +24,7 @@ LOCAL throttleCtrl IS 0.
 PRINT " ".
 PRINT " Burn accel    =".
 PRINT " Burn throt    =".
+PRINT " Groundspeed   =".
 PRINT " Local gravity =".
 PRINT " Local TWR     =".
 PRINT " Radar alt     =".
@@ -40,13 +41,13 @@ IF body:atm:exists {
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
-      IF verticalspeed < -1 {
-            SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
-            SET throttleCtrl TO burnThrot.
-
-      } ELSE {
+      IF verticalspeed > -1 OR groundspeed < 1 {
             SET steeringCtrl TO lookdirup(up:vector, facing:topvector).
             SET throttleCtrl TO g / maxAccel.
+
+      } ELSE {
+            SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
+            SET throttleCtrl TO burnThrot.
       }
 
       IF NOT modeBurn AND burnThrot > 0.9 AND verticalspeed < 0 {
@@ -71,9 +72,10 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
       PRINT round(burnAccel,2) + "    " at(18,1).
       PRINT round(burnThrot,2) + "    " at(18,2).
-      PRINT round(g,2) + "    " at(18,3).
-      PRINT round(maxAccel / g,2) + "    " at(18,4).
-      PRINT round(b:bottomaltradar) + "  " at(18,5).
+      PRINT round(groundspeed,2) + "    " at(18,3).
+      PRINT round(g,2) + "    " at(18,4).
+      PRINT round(maxAccel / g,2) + "    " at(18,5).
+      PRINT round(b:bottomaltradar) + "  " at(18,6).
 
       WAIT 0.
 }
