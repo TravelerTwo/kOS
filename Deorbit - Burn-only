@@ -7,7 +7,6 @@ SET terminal:width TO 40.
 
 // PHYSICAL PROPERTIES.
 LOCAL g IS body:mu / body:position:sqrmagnitude.
-LOCAL p IS body:atm:altitudepressure(altitude).
 
 // VARIABLES.
 LOCAL b IS ship:bounds.
@@ -41,12 +40,14 @@ IF body:atm:exists {
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
-      IF verticalspeed > -1 OR groundspeed < 1 {
+      IF verticalspeed > -1 {
             SET steeringCtrl TO lookdirup(up:vector, facing:topvector).
             SET throttleCtrl TO g / maxAccel.
 
       } ELSE {
-            SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector).
+            IF groundspeed < 1 { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
+            ELSE { SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector). }
+
             SET throttleCtrl TO burnThrot.
       }
 
@@ -61,10 +62,12 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
       IF body:atm:exists AND deployChutes AND NOT chutessafe { chutessafe ON. }
 
-      IF NOT gear AND b:bottomaltradar < 250 { gear ON. }
+      IF NOT gear AND b:bottomaltradar < 250 {
+            IF NOT modeBurn { SET modeBurn TO TRUE. }
+            gear ON.
+      }
 
       SET g TO body:mu / body:position:sqrmagnitude.
-      SET p TO body:atm:altitudepressure(altitude).
       SET maxAccel TO ship:availablethrust / ship:mass.
       SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g.
       SET burnThrot TO burnAccel / maxAccel.
