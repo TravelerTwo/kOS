@@ -12,7 +12,7 @@ LOCAL g IS body:mu / body:position:sqrmagnitude.
 LOCAL b IS ship:bounds.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 
-LOCAL burnAccel IS verticalspeed^2 / 2 / b:bottomaltradar + g.
+LOCAL burnAccel IS verticalspeed^2 / 2 / (b:bottomaltradar - groundspeed) + g.
 LOCAL burnThrot IS burnAccel / maxAccel.
 
 // SYSTEM CONTROL.
