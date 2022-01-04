@@ -40,40 +40,27 @@ IF body:atm:exists {
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
-print round(verticalspeed,2) + "    " at(18,9).
-print verticalspeed < -1 + "  " at(18,10).
-
-      IF verticalspeed < -1 {
-            IF groundspeed < 1 { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
-            ELSE { SET steeringCtrl TO lookdirup(-velocity:surface, facing:topvector). }
-
-            SET throttleCtrl TO burnThrot.
-
-      } ELSE {
-            SET steeringCtrl TO lookdirup(up:vector, facing:topvector).
-            SET throttleCtrl TO g / maxAccel.
-      }
-
-      // IF NOT modeBurn AND burnThrot > 0.9 AND verticalspeed < 0 OR gear {
-      IF NOT modeBurn AND burnThrot > 0.9 AND verticalspeed < 0 {
+      IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 250) {
             SET modeBurn TO TRUE.
             LOCK throttle TO throttleCtrl.
 
-      // } ELSE IF modeBurn AND (verticalspeed > 0 OR b:bottomaltradar > 250 AND burnThrot < 0.5) {
-      } ELSE IF modeBurn AND verticalspeed > 0 {
+      } ELSE IF modeBurn AND (verticalspeed > 0 OR burnThrot < 0.5 AND b:bottomaltradar > 250) {
             SET modeBurn TO FALSE.
             LOCK throttle TO 0.
-            gear OFF.
       }
 
       IF body:atm:exists AND deployChutes AND NOT chutessafe { chutessafe ON. }
 
-      IF NOT gear AND b:bottomaltradar < 250 { gear ON. }
+      IF NOT gear AND verticalspeed < -1 AND b:bottomaltradar < 250 { gear ON. }
 
       SET g TO body:mu / body:position:sqrmagnitude.
       SET maxAccel TO ship:availablethrust / ship:mass.
-      SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g.
+      SET burnAccel TO verticalspeed^2 / 2 / (b:bottomaltradar - groundspeed) + g.
       SET burnThrot TO burnAccel / maxAccel.
+      SET steeringCtrl TO lookdirup(up:vector * 5 + -velocity:surface, facing:topvector).
+
+      IF verticalspeed < -1 { SET throttleCtrl TO burnThrot. }
+      ELSE { SET throttleCtrl TO g / maxAccel. }
 
       PRINT round(burnAccel,2) + "    " at(18,1).
       PRINT round(burnThrot,2) + "    " at(18,2).
