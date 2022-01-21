@@ -1,0 +1,83 @@
+// Master script for minor tasks, setting up or maneuvers to circularize, change inclination, etc.
+
+PARAMETER task IS "circ".
+PARAMETER var IS "a".
+
+IF task = "circ" {
+    LOCAL eVar IS 0.
+
+    IF var = "a" {
+        SET var TO apoapsis.
+        SET eVar TO eta:apoapsis.
+
+    } ELSE IF var = "p" {
+        SET var TO periapsis.
+        SET eVar TO eta:periapsis.
+    }
+
+    LOCAL r IS body:radius + var.
+    LOCAL velCirc IS sqrt(body:mu / r).
+    LOCAL velVar IS sqrt(body:mu * (2 / r - 1 / obt:semimajoraxis)).
+
+    SET mnv TO node(time:seconds + eVar, 0, 0, velCirc - velVar).
+    ADD mnv.
+
+// } ELSE IF task = "copy" {
+// SWITCH TO 1?
+// copypath("0:/deorbit_burn", "d_b").
+// copypath("0:/exec_node", "e_n").
+// copypath("0:/exec_rsvp", "e_r").
+// copypath("0:/launch", "l").
+// copypath("0:/tasks", "t").
+
+} ELSE IF task = "inc" {
+
+    IF NOT HASTARGET {
+        PRINT "Select target...".
+        WAIT UNTIL HASTARGET.
+    }
+
+    LOCAL angVel IS vcrs(velocity:orbit, ship:position - body:position).
+    LOCAL angVelTar IS vcrs(target:velocity:orbit, target:position - body:position).
+    LOCAL anVec IS vcrs(angVel, angVelTar).
+    LOCAL e IS obt:eccentricity.
+    LOCAL ta IS obt:trueanomaly.
+    LOCAL vec IS vcrs(-1 * body:position, anVec):normalized + angVel:normalized.
+    LOCAL ang IS vang(anVec, -1 * body:position).
+    LOCAL anTa IS 0.
+
+    IF vec:mag > 1 {
+        SET anTa TO ta - ang.
+        IF anTa < 0 { SET anTa TO 360 + anTa. }
+        IF anTa > 360 { SET anTa TO anTa - 360. }
+
+    } ELSE {
+        SET anTa TO ta + ang.
+        IF anTa < 0 { SET anTa TO 360 + anTa. }
+        IF anTa > 360 { SET anTa TO anTa - 360. }
+    }
+
+    LOCAL ea IS 2 * arctan((tan(ta / 2)) / sqrt((1 + e) / (1 - e))).
+    LOCAL ma IS ea * constant:pi / 180 - e * sin(ea).
+    LOCAL anEa IS 2 * arctan((tan(anTa / 2)) / sqrt((1 + e) / (1 - e))).
+    LOCAL anMa IS anEa * constant:pi / 180 - e * sin(anEa).
+    LOCAL n IS sqrt(body:mu / (obt:semimajoraxis)^3).
+    LOCAL anEta IS (anMa - ma) / n.
+
+    IF anEta < 0 { SET anEta TO obt:period + anEta. }
+
+    LOCAL deltaAng IS vang(angVel, angVelTar).
+    LOCAL dV IS 2 * velocityat(ship, time:seconds + anEta):orbit:mag * sin(deltaAng / 2).
+
+    SET mnv TO node(time:seconds + anEta, 0, -dV, 0).
+    ADD mnv.
+
+// } ELSE IF task = "rel" {
+
+// synchronous orbit(s), apoapsis, periapsis, inclination, period(?).
+
+// } ELSE IF task = "rend" {
+
+// target:velocity:orbit - velocity:orbit = steering (and velocity?).
+
+}
