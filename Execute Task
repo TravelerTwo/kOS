@@ -1,4 +1,5 @@
 // Master script for minor tasks, setting up or maneuvers to circularize, change inclination, etc.
+// "Inc" doesn't account for shifting velocity.
 
 PARAMETER task IS "circ".
 PARAMETER var IS "a".
