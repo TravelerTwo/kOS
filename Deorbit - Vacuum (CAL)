@@ -1,0 +1,127 @@
+CLEARSCREEN.
+SET config:ipu TO 400.
+SET terminal:height TO 20.
+SET terminal:width TO 40.
+
+FUNCTION h_accel {
+    LOCAL v IS vxcl(up:vector, velocity:surface).
+    LOCAL hAccel IS -v / 5.
+    RETURN hAccel:normalized * min(hAccel:mag, burnAccel).
+}
+
+FUNCTION pitch_angle {
+    PARAMETER alt.
+
+    LOCAL altError IS alt - altitude.
+    LOCAL navSpeed IS 2 * altError / navTime - verticalspeed.
+
+    LOCAL centriAccel IS vxcl(up:vector, velocity:orbit):sqrmagnitude / body:position:mag.
+    LOCAL coriolAccel IS (-2 * vcrs(body:angularvel, velocity:surface)):mag.
+    LOCAL navAccel IS (navSpeed - verticalspeed) / 10.
+    LOCAL vAccel IS g - centriAccel - coriolAccel + navAccel.
+    
+    RETURN arccos(max(-0.99, min(0.99, vAccel / maxAccel))).
+}
+
+// PHYSICAL PROPERTIES.
+LOCAL b IS ship:bounds.
+LOCAL g IS body:mu / body:position:sqrmagnitude.
+
+// VARIABLES.
+LOCAL maxAccel IS ship:availablethrust / ship:mass.
+LOCAL nav_alt IS periapsis.
+LOCAL navPitch IS 0.
+
+LOCAL burnAccel IS verticalspeed^2 / 2 / altitude + g.
+LOCAL burnThrot IS burnAccel / maxAccel.
+LOCAL navTime IS groundspeed / maxAccel.
+
+// SYSTEM CONTROL.
+LOCAL modeApproach IS FALSE.
+LOCAL modeBrake IS TRUE.
+LOCAL modeBurn IS FALSE.
+LOCAL modePitch IS TRUE.
+LOCAL steeringCtrl IS facing:vector.
+LOCAL throttleCtrl IS 1.
+
+PRINT " ".
+PRINT " Local gravity =".
+PRINT " Local TWR     =".
+PRINT " ".
+PRINT " Radar alt     =".
+PRINT " Target alt    = " + round(nav_alt).
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Burn accel    =".
+PRINT " Burn throt    =".
+PRINT " ".
+PRINT " Groundspeed   =".
+PRINT " Verticalspeed =".
+PRINT " ".
+PRINT " Pitch angle   =".
+PRINT " Time to stop  =".
+PRINT "--------------------------".
+
+WAIT 1.
+sas OFF.
+LOCK steering TO steeringCtrl.
+
+UNTIL sas {
+
+      IF modeBrake {
+
+            SET navPitch TO pitch_angle(nav_alt).
+            SET navTime TO groundspeed / maxAccel.
+            SET steeringCtrl TO angleaxis(navPitch, vcrs(velocity:surface, up:vector)) * up:vector.
+
+            IF NOT modeApproach AND eta:periapsis < 1 {
+                  SET modeApproach TO TRUE.
+                  LOCK throttle TO throttleCtrl.
+            }
+
+            IF groundspeed < 1 {
+                  SET modeBrake TO FALSE.
+                  LOCK throttle TO 0.
+            }
+
+      } ELSE {
+
+            SET navTime TO (verticalspeed + sqrt(2 * b:bottomaltradar * max(g, burnAccel * throttle) + verticalspeed^2)) / burnAccel.
+            SET steeringCtrl TO lookdirup(up:vector * burnAccel + h_accel(), facing:topvector).
+            SET throttleCtrl TO burnThrot.
+
+            IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 250) {
+                  SET modeBurn TO TRUE.
+                  LOCK throttle TO throttleCtrl.
+            }
+
+            IF NOT gear AND verticalspeed < -1 AND b:bottomaltradar < 250 { gear ON. }
+
+            IF ship:status = "landed" { BREAK. }
+      }
+
+      IF verticalspeed > -1 { SET burnAccel TO g. }
+      ELSE { SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g. }
+
+      SET g TO body:mu / body:position:sqrmagnitude.
+      SET burnThrot TO burnAccel / maxAccel.
+      SET maxAccel TO max(0.0001, ship:availablethrust / ship:mass).
+
+      PRINT round(g,2) + "    " at(17,1).
+      PRINT round(maxAccel / g,2) + "    " at(17,2).
+      PRINT round(b:bottomaltradar) + "  " at(17,4).
+      PRINT round(burnAccel,2) + "    " at(17,8).
+      PRINT round(burnThrot,2) + "    " at(17,9).
+      PRINT round(groundspeed,2) + "    " at(17,11).
+      PRINT round(verticalspeed,2) + "    " at(17,12).
+      PRINT round(90 - navPitch,2) + "    " at(17,14).
+      PRINT round(navTime,2) + "    " at(17,15).
+
+      WAIT 0.
+}
+
+clearvecdraws().
+SET ship:control:pilotmainthrottle TO 0.
+SET throttleCtrl TO 0.
+UNLOCK ALL.
+sas ON.
