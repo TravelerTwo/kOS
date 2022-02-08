@@ -17,7 +17,6 @@ LOCAL g IS body:mu / body:position:sqrmagnitude.
 // VARIABLES.
 LOCAL b IS ship:bounds.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
-LOCAL navPitch IS 0.
 
 LOCAL burnAccel IS verticalspeed^2 / 2 / (b:bottomaltradar - groundspeed) + g.
 LOCAL burnThrot IS burnAccel / maxAccel.
@@ -41,7 +40,6 @@ PRINT " ".
 PRINT " Groundspeed   =".
 PRINT " Verticalspeed =".
 PRINT " ".
-PRINT " Pitch angle   =".
 PRINT " Time to stop  =".
 PRINT "--------------------------".
 
@@ -60,10 +58,9 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       ELSE { SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g. }
 
       SET g TO body:mu / body:position:sqrmagnitude.
-      SET burnThrot TO burnAccel / maxAccel / cos(navPitch).
+      SET burnThrot TO burnAccel / maxAccel.
       SET maxAccel TO ship:availablethrust / ship:mass.
-      SET navPitch TO vang(up:vector, steeringCtrl:vector).
-      SET navTime TO (verticalspeed + sqrt(2 * b:bottomaltradar * max(g, burnAccel * throttle) + verticalspeed^2)) / burnAccel.
+      SET navTime TO (verticalspeed + sqrt(max(0, 2 * b:bottomaltradar * max(g, burnAccel * throttle) + verticalspeed^2))) / burnAccel.
       SET steeringCtrl TO lookdirup(up:vector * burnAccel + h_accel(), facing:topvector).
       SET throttleCtrl TO burnThrot.
 
@@ -87,8 +84,7 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       PRINT round(burnThrot,2) + "    " at(18,8).
       PRINT round(groundspeed,2) + "    " at(18,10).
       PRINT round(verticalspeed,2) + "    " at(18,11).
-      PRINT round(90 - navPitch,2) + "    " at(18,13).
-      PRINT round(navTime,2) + "    " at(18,14).
+      PRINT round(navTime,2) + "    " at(18,13).
 
       WAIT 0.
 }
