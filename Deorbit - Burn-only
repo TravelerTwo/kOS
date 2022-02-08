@@ -1,8 +1,8 @@
 PARAMETER deployChutes IS FALSE.
 
 CLEARSCREEN.
-SET config:ipu TO 300.
-SET terminal:height TO 22.
+SET config:ipu TO 400.
+SET terminal:height TO 20.
 SET terminal:width TO 40.
 
 FUNCTION h_accel {
@@ -17,22 +17,32 @@ LOCAL g IS body:mu / body:position:sqrmagnitude.
 // VARIABLES.
 LOCAL b IS ship:bounds.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
+LOCAL navPitch IS 0.
 
 LOCAL burnAccel IS verticalspeed^2 / 2 / (b:bottomaltradar - groundspeed) + g.
 LOCAL burnThrot IS burnAccel / maxAccel.
+LOCAL navTime IS groundspeed / maxAccel.
 
 // SYSTEM CONTROL.
 LOCAL modeBurn IS FALSE.
-LOCAL steeringCtrl IS facing:vector.
+LOCAL steeringCtrl IS facing.
 LOCAL throttleCtrl IS 0.
 
 PRINT " ".
-PRINT " Burn accel    =".
-PRINT " Burn throt    =".
-PRINT " Groundspeed   =".
 PRINT " Local gravity =".
 PRINT " Local TWR     =".
+PRINT " ".
 PRINT " Radar alt     =".
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Burn accel    =".
+PRINT " Burn throt    =".
+PRINT " ".
+PRINT " Groundspeed   =".
+PRINT " Verticalspeed =".
+PRINT " ".
+PRINT " Pitch angle   =".
+PRINT " Time to stop  =".
 PRINT "--------------------------".
 
 sas OFF.
@@ -50,8 +60,10 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       ELSE { SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g. }
 
       SET g TO body:mu / body:position:sqrmagnitude.
-      SET burnThrot TO burnAccel / maxAccel.
+      SET burnThrot TO burnAccel / maxAccel / cos(navPitch).
       SET maxAccel TO ship:availablethrust / ship:mass.
+      SET navPitch TO vang(up:vector, steeringCtrl:vector).
+      SET navTime TO (verticalspeed + sqrt(2 * b:bottomaltradar * max(g, burnAccel * throttle) + verticalspeed^2)) / burnAccel.
       SET steeringCtrl TO lookdirup(up:vector * burnAccel + h_accel(), facing:topvector).
       SET throttleCtrl TO burnThrot.
 
@@ -68,12 +80,15 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
       IF NOT gear AND verticalspeed < -1 AND b:bottomaltradar < 250 { gear ON. }
 
-      PRINT round(burnAccel,2) + "    " at(18,1).
-      PRINT round(burnThrot,2) + "    " at(18,2).
-      PRINT round(groundspeed,2) + "    " at(18,3).
-      PRINT round(g,2) + "    " at(18,4).
-      PRINT round(maxAccel / g,2) + "    " at(18,5).
-      PRINT round(b:bottomaltradar) + "  " at(18,6).
+      PRINT round(g,2) + "    " at(18,1).
+      PRINT round(maxAccel / g,2) + "    " at(18,2).
+      PRINT round(b:bottomaltradar) + "  " at(18,4).
+      PRINT round(burnAccel,2) + "    " at(18,7).
+      PRINT round(burnThrot,2) + "    " at(18,8).
+      PRINT round(groundspeed,2) + "    " at(18,10).
+      PRINT round(verticalspeed,2) + "    " at(18,11).
+      PRINT round(90 - navPitch,2) + "    " at(18,13).
+      PRINT round(navTime,2) + "    " at(18,14).
 
       WAIT 0.
 }
