@@ -5,6 +5,12 @@ SET config:ipu TO 300.
 SET terminal:height TO 22.
 SET terminal:width TO 40.
 
+FUNCTION h_accel {
+    LOCAL v IS vxcl(up:vector, velocity:surface).
+    LOCAL hAccel IS -v / 5.
+    RETURN hAccel:normalized * min(hAccel:mag, burnAccel).
+}
+
 // PHYSICAL PROPERTIES.
 LOCAL g IS body:mu / body:position:sqrmagnitude.
 
@@ -40,6 +46,15 @@ IF body:atm:exists {
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
+      IF verticalspeed > -1 { SET burnAccel TO g. }
+      ELSE { SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g. }
+
+      SET g TO body:mu / body:position:sqrmagnitude.
+      SET burnThrot TO burnAccel / maxAccel.
+      SET maxAccel TO ship:availablethrust / ship:mass.
+      SET steeringCtrl TO lookdirup(up:vector * burnAccel + h_accel(), facing:topvector).
+      SET throttleCtrl TO burnThrot.
+
       IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 250) {
             SET modeBurn TO TRUE.
             LOCK throttle TO throttleCtrl.
@@ -52,15 +67,6 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       IF body:atm:exists AND deployChutes AND NOT chutessafe { chutessafe ON. }
 
       IF NOT gear AND verticalspeed < -1 AND b:bottomaltradar < 250 { gear ON. }
-
-      SET g TO body:mu / body:position:sqrmagnitude.
-      SET maxAccel TO ship:availablethrust / ship:mass.
-      SET burnAccel TO verticalspeed^2 / 2 / (b:bottomaltradar - groundspeed) + g.
-      SET burnThrot TO burnAccel / maxAccel.
-      SET steeringCtrl TO lookdirup(up:vector * 5 + -velocity:surface, facing:topvector).
-
-      IF verticalspeed < -1 { SET throttleCtrl TO burnThrot. }
-      ELSE { SET throttleCtrl TO g / maxAccel. }
 
       PRINT round(burnAccel,2) + "    " at(18,1).
       PRINT round(burnThrot,2) + "    " at(18,2).
