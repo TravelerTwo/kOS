@@ -86,7 +86,8 @@ UNTIL sas {
 
       } ELSE {
 
-            SET navTime TO (verticalspeed + sqrt(2 * b:bottomaltradar * max(g, burnAccel * throttle) + verticalspeed^2)) / burnAccel.
+            SET navPitch TO vang(up:vector, facing:vector).
+            SET navTime TO (verticalspeed + sqrt(max(0, 2 * b:bottomaltradar * max(g, burnAccel * throttle) + verticalspeed^2))) / burnAccel.
             SET steeringCtrl TO lookdirup(up:vector * burnAccel + h_accel(), facing:topvector).
             SET throttleCtrl TO burnThrot.
 
