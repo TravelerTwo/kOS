@@ -1,17 +1,13 @@
 // Master script for minor tasks, setting up or maneuvers to circularize, change inclination, etc.
 // "Inc" doesn't account for shifting velocity.
 
-PARAMETER task IS "circ".
-PARAMETER var IS "a".
+PARAMETER task IS "inc".
 
 IF task = "circ" {
-    LOCAL eVar IS 0.
+    LOCAL eVar IS eta:apoapsis.
+    LOCAL var IS apoapsis.
 
-    IF var = "a" {
-        SET var TO apoapsis.
-        SET eVar TO eta:apoapsis.
-
-    } ELSE IF var = "p" {
+    IF eta:apoapsis > eta:periapsis OR obt:eccentricity > 1 {
         SET var TO periapsis.
         SET eVar TO eta:periapsis.
     }
