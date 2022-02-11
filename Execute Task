@@ -7,7 +7,7 @@ IF task = "circ" {
     LOCAL eVar IS eta:apoapsis.
     LOCAL var IS apoapsis.
 
-    IF eta:apoapsis > eta:periapsis OR obt:eccentricity > 1 {
+    IF eta:apoapsis > eta:periapsis {
         SET var TO periapsis.
         SET eVar TO eta:periapsis.
     }
