@@ -69,9 +69,32 @@ IF task = "circ" {
     SET mnv TO node(time:seconds + anEta, 0, -dV, 0).
     ADD mnv.
 
-// } ELSE IF task = "rel" {
+} ELSE IF task = "rel" {
 
-// synchronous orbit(s), apoapsis, periapsis, inclination, period(?).
+    CLEARSCREEN.
+
+    PRINT " Synchronous altitudes".
+    PRINT "    " + round(((body:mu * body:rotationperiod^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT "    " + round(((body:mu * (body:rotationperiod / 2)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT "    " + round(((body:mu * (body:rotationperiod / 4)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT "    " + round(((body:mu * (body:rotationperiod / 8)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT " ".
+    PRINT " Apoapsis:".
+    PRINT " Periapsis:".
+    PRINT " ".
+    PRINT " Inclination:".
+    PRINT " Eccentricity:".
+
+    UNTIL NOT sas {
+        PRINT round(apoapsis) + "  " at(11,6).
+        PRINT round(periapsis) + "  " at(12,7).
+        PRINT round(obt:inclination,4) + "      " at(14,9).
+        PRINT round(obt:eccentricity,4) + "      " at(15,10).
+
+        WAIT 0.
+    }
+
+    sas ON.
 
 // } ELSE IF task = "rend" {
 
