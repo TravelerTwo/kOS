@@ -15,8 +15,8 @@ FUNCTION pitch_angle {
     LOCAL altError IS alt - altitude.
     LOCAL navSpeed IS 2 * altError / navTime - verticalspeed.
 
-    LOCAL centriAccel IS vxcl(up:vector, velocity:orbit):sqrmagnitude / body:position:mag.
-    LOCAL coriolAccel IS (-2 * vcrs(body:angularvel, velocity:surface)):mag.
+    LOCAL cenAccel IS vxcl(up:vector, velocity:orbit):sqrmagnitude / body:position:mag.
+    LOCAL corAccel IS (-2 * vcrs(body:angularvel, velocity:surface)):mag.
     LOCAL navAccel IS (navSpeed - verticalspeed) / 10.
     LOCAL vAccel IS g - centriAccel - coriolAccel + navAccel.
     
