@@ -18,7 +18,7 @@ FUNCTION pitch_angle {
     LOCAL cenAccel IS vxcl(up:vector, velocity:orbit):sqrmagnitude / body:position:mag.
     LOCAL corAccel IS (-2 * vcrs(body:angularvel, velocity:surface)):mag.
     LOCAL navAccel IS (navSpeed - verticalspeed) / 10.
-    LOCAL vAccel IS g - centriAccel - coriolAccel + navAccel.
+    LOCAL vAccel IS g - cenAccel - corAccel + navAccel.
     
     RETURN arccos(max(-0.99, min(0.99, vAccel / maxAccel))).
 }
