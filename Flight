@@ -53,7 +53,7 @@ FUNCTION nav_circle {
 }
 
 FUNCTION nav_pitch {
-    IF modeFlight <> "" { SET PIDPitch:setpoint TO (nav_alt - altitude) / climbRate. }.
+    IF modeFlight <> "" { SET PIDPitch:setpoint TO (nav_alt - altitude) / climbRate. }
     LOCAL pitchAccel IS PIDPitch:update(time:seconds, verticalspeed).
 
     IF mach > 1 {
