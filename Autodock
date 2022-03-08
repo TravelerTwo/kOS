@@ -179,7 +179,7 @@ UNTIL NOT HASTARGET OR sas {
       }
 
       PRINT round(vang(facing:vector, -target:facing:vector),2) + "    " at(15,2).
-      PRINT round(vang(facing:starvector, target:facing:starvector),2) + "    " at(15,3).
+      PRINT round(vang(facing:starvector, -target:facing:starvector),2) + "    " at(15,3).
       PRINT round(vang(facing:topvector, target:facing:topvector),2) + "    " at(15,4).
       PRINT round(desiredAng:mag * constant:radtodeg,2) + "    " at(15,5).
       PRINT round(desiredPos:mag) + "  " at(15,14).
