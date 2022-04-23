@@ -2,7 +2,7 @@
 // Add safety check for input?
 // Remove interval?
 
-PARAMETER dest.
+PARAMETER dest IS target.
 
 CLEARSCREEN.
 SET config:ipu TO 2000.
