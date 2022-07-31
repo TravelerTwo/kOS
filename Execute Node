@@ -1,3 +1,9 @@
+// https://www.reddit.com/r/Kos/comments/3mslqe/suicide_burn/
+// https://pastebin.com/cwcW62Cm
+// https://github.com/marianoapp/kOS-scripts/blob/master/land.ks
+// https://www.reddit.com/r/Kos/comments/3fq4is/a_script_to_get_information_on_stages_in_advance/
+// https://pastebin.com/6ga862mt
+
 CLEARSCREEN.
 SET config:ipu TO 300.
 SET terminal:height TO 20.
