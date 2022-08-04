@@ -91,7 +91,7 @@ UNTIL sas {
             SET steeringCtrl TO lookdirup(up:vector * burnAccel + h_accel(), facing:topvector).
             SET throttleCtrl TO burnThrot.
 
-            IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 250) {
+            IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 500) {
                   SET modeBurn TO TRUE.
                   LOCK throttle TO throttleCtrl.
             }
