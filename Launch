@@ -1,3 +1,5 @@
+// https://www.reddit.com/r/Kos/comments/ap7si4/tips_for_more_precise_maneuver_node_execution/
+
 PARAMETER desiredApo IS 100000.
 PARAMETER desiredInc IS 0.
 
