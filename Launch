@@ -1,16 +1,6 @@
 PARAMETER desiredApo IS 100000.
 PARAMETER desiredInc IS 0.
 
-// TO-DO.
-// Retrograde launch, pitch isn't perfect, but it's working.
-// Very low TWR upper stages might need something to help them pitch up to compensate for lack of thrust.
-// stage_dV check perhaps stages a bit early.
-
-// Find next stage TWR, possiblethrust / currentmass might be good enough.
-// Adapt desiredEta to use next stage TWR after using whatever dV remains in current stage.
-// Experiment with adjusting desiredEta to make up for pitching up before burn.
-// desiredEta * sin(pitchOrbit) or desiredEta - desiredEta * cos(pitchOrbit).
-
 CLEARSCREEN.
 SET config:ipu TO 500.
 SET steeringmanager:rollcontrolanglerange TO 180.
@@ -25,12 +15,39 @@ FUNCTION burn_dV {
     RETURN velCirc - velApo.
 }
 
-FUNCTION desired_pitch {
-    LOCAL atmPitch IS desiredApo * (1 + p + ship:q).
-    LOCAL spdPitch IS body:atm:height * maxTwr.
-    LOCAL desiredSpeed IS sqrt(body:mu / (body:radius + spdPitch)).
-    LOCAL desiredPitch IS sqrt(apoapsis / atmPitch) + sqrt(groundspeed / desiredSpeed).
-    RETURN desiredPitch / 2 * 90.
+FUNCTION burn_time {
+    PARAMETER dV.
+
+    LOCAL elist IS LIST().
+    LIST ENGINES IN elist.
+
+    LOCAL ispFlow IS 0.
+    LOCAL ispThrust IS 0.
+    LOCAL ispTotal IS 0.
+
+    FOR e IN elist {
+        IF e:ignition {
+            IF e:flameout { e:shutdown(). }
+            ELSE {
+                SET ispFlow TO ispFlow + e:availablethrust / (e:isp * 9.80665).
+                SET ispThrust TO ispThrust + e:availablethrust.
+                SET ispTotal TO ispThrust / (ispFlow * 9.80665).
+            }
+        }
+        WAIT 0.
+    }
+
+    LOCAL ve IS 9.80665 * ispTotal.
+    LOCAL burnFlow IS ship:availablethrust / ve.
+    LOCAL burnMass IS ship:mass / constant():e^(dV / ve).
+    RETURN (ship:mass - burnMass) / burnFlow.
+}
+
+FUNCTION pitch_angle {
+    LOCAL offsetApo IS desiredApo * (1 + p + ship:q).
+    LOCAL offsetSpeed IS body:atm:height * maxTwr.
+    LOCAL speedOrbit IS sqrt(body:mu / (body:radius + offsetSpeed)).
+    RETURN (sqrt(apoapsis / offsetApo) + sqrt(groundspeed / speedOrbit)) / 2 * 90.
 }
 
 FUNCTION launch_azimuth {
@@ -49,63 +66,22 @@ FUNCTION launch_azimuth {
     RETURN az_corr.
 }
 
-FUNCTION stage_dV {
-    LOCAL elist_active IS list().
-    LOCAL elist_all IS list().
-    LOCAL rlist IS list().
-    LIST ENGINES IN elist_all.
-
-    LOCAL fuelAmount IS 0.
-    LOCAL fuelDensity IS 0.
-    LOCAL fuelMass IS 0.
-    LOCAL i IS 0.
-    LOCAL ispFlow IS 0.
-    LOCAL ispThrust IS 0.
-    LOCAL ispTotal IS 0.
-
-    FOR e IN elist_all {
-        IF e:ignition AND NOT e:flameout { elist_active:add(e). }
-        WAIT 0.
-    }
-
-    FOR e IN elist_active {
-        UNTIL i = e:consumedresources:keys:length {
-            IF rlist:contains(e:consumedresources:keys[i]) { BREAK. }
-            rlist:add(e:consumedresources:keys[i]).
-            SET fuelAmount TO e:consumedresources[e:consumedresources:keys[i]]:amount.
-            SET fuelDensity TO e:consumedresources[e:consumedresources:keys[i]]:density.
-            SET fuelMass TO fuelMass + fuelAmount * fuelDensity.
-            SET i TO i + 1.
-            WAIT 0.
-        }
-
-        SET i TO 0.
-        SET ispFlow TO ispFlow + e:maxthrustat(0) / (e:vacuumisp * 9.80665).
-        SET ispThrust TO ispThrust + e:maxthrustat(0).
-        SET ispTotal TO ispThrust / (ispFlow * 9.80665).
-        WAIT 0.
-    }
-
-    RETURN 9.80665 * ispTotal * ln(ship:mass / (ship:mass - fuelMass)).
-}
-
 // PHYSICAL PROPERTIES.
 LOCAL g IS body:mu / body:position:sqrmagnitude.
 LOCAL p IS body:atm:altitudepressure(altitude).
 
 // VARIABLES.
 LOCAL burndV IS burn_dV().
+LOCAL burnTime IS 0.
+LOCAL burnVec IS facing:vector.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 LOCAL maxthrustAtStage IS ship:maxthrustat(0).
-LOCAL i IS 1.
 LOCAL navAlt IS 100 + alt:radar.
 LOCAL navPitch IS 90.
 LOCAL navYaw IS 90.
-LOCAL PIDApo IS PIDLoop(0.75, 1.15, 0.005, 0, 1).
-LOCAL pitchCraft IS vang(up:vector, facing:vector).
+LOCAL nodeTime IS 0.
 LOCAL pitchOrbit IS vang(up:vector, velocity:orbit).
 
-LOCAL desiredEta IS burndV / max(0.0001, maxAccel) / 2.
 LOCAL maxTwr IS maxAccel / g.
 
 IF abs(desiredInc) > 180 - abs(ship:latitude) { SET desiredInc TO 180. }
@@ -115,28 +91,13 @@ IF desiredApo <= body:atm:height { SET desiredApo TO body:atm:height + 10000. }
 IF desiredInc = 180 { SET navYaw TO 270. }
 
 // SYSTEM CONTROL.
+LOCAL modeBurn IS FALSE.
 LOCAL modeCirc IS FALSE.
+LOCAL modeCoast IS FALSE.
 LOCAL steeringCtrl IS lookdirup(facing:vector, facing:topvector).
 LOCAL throttleCtrl IS 1.
 
 PRINT " ".
-PRINT " Local gravity  =".
-PRINT " Local TWR      =".
-PRINT " Pressure (ATM) =".
-PRINT " Pressure (Q)   =".
-PRINT " Throttle       =".
-PRINT " ".
-PRINT " Relative inc   =".
-PRINT " Relative pitch =".
-PRINT "--------------------------".
-PRINT " ".
-PRINT " Burn at ETA    =".
-PRINT " Eccentricity   =".
-PRINT " ".
-PRINT " Relative apo   =".
-PRINT " Relative ETA   =".
-PRINT " Relative speed =".
-PRINT "--------------------------".
 
 sas OFF.
 gear OFF.
@@ -146,57 +107,77 @@ LOCK throttle TO throttleCtrl.
 
 UNTIL sas {
 
-      IF NOT modeCirc {
+      IF NOT modeCoast {
 
-            SET navPitch TO 90 - min(desired_pitch(), pitchOrbit).
-            SET throttleCtrl TO 1 - ship:q^2.
+            SET burnTime TO (desiredApo - apoapsis) / max(0.001, maxAccel) / 2.
+            SET navPitch TO 90 - min(pitch_angle(), pitchOrbit).
+            SET throttleCtrl TO min(1, burnTime) - ship:q^2.
 
-            IF apoapsis > desiredApo - 2500 {
-                  LOCAL stagedV IS stage_dV().
-                  SET burndV TO burn_dV().
-                  SET modeCirc TO TRUE.
+            IF desiredInc <> 0 AND desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
+
+            IF airspeed > 100 AND alt:radar > navAlt { SET steeringCtrl TO heading(navYaw, navPitch). }
+            ELSE { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
+
+            IF apoapsis >= desiredApo {
+                  SET modeCoast TO TRUE.
                   SET throttleCtrl TO 0.
-                  IF stagedV < burndV {
-                        SET i TO 30.
-                        PRINT round(stagedV - burndV,2) at(18,16).
-                        WAIT 1.
-                  }
+            }
+
+      } ELSE IF NOT modeCirc  {
+
+            SET burndV TO burn_dV().
+            SET burnTime TO burndV / maxAccel / 2.
+            SET steeringCtrl TO velocity:orbit.
+
+            PRINT round(burnTime,2) + "    " at(18,11).
+            PRINT round(burndV,2) + "    " at(18,16).
+
+            IF eta:apoapsis < burnTime {
+                  SET desiredApo TO desiredApo + 10000.
+                  SET modeCoast TO FALSE.
+
+            } ELSE IF eta:apoapsis > burnTime AND altitude > body:atm:height {
+                  ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
+                  SET burnVec TO nextnode:burnvector.
+                  SET modeCirc TO TRUE.
+                  LOCK throttle TO 0.
             }
 
       } ELSE {
 
-            SET burndV TO burn_dV().
-            SET desiredEta TO burndV / max(0.0001, maxAccel) / 2.
-            SET navPitch TO 90 - pitchOrbit.
-            SET PIDApo:setpoint TO desiredEta + i.
-            SET throttleCtrl TO PIDApo:update(time:seconds, eta:apoapsis).
+            IF NOT modeBurn AND nextnode:eta <= nodeTime {
+                  SET modeBurn TO TRUE.
+                  SET burnVec TO nextnode:burnvector.
+                  LOCK throttle TO throttleCtrl.
+            }
 
-            PRINT round(desiredEta,2) + "    " at(18,11).
-            PRINT round(obt:eccentricity,2) + "    " at(18,12).
-            PRINT round(eta:apoapsis - desiredEta,2) + "    " at(18,15).
-            PRINT round(burndV,2) + "    " at(18,16).
+            SET burnTime TO burn_time(nextnode:deltav:mag).
+            SET nodeTime TO burn_time(nextnode:deltav:mag / 2).
+            SET throttleCtrl TO min(1, burnTime).
 
-            IF burndV < 0.25 { BREAK. }
+            IF throttleCtrl < 1 { SET steeringCtrl TO lookdirup(burnVec, facing:topvector).
+            } ELSE { SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector). }
+
+            PRINT round(burnTime,1) + "    " at(17,1).
+            PRINT round(nodeTime,1) + "    " at(17,2).
+            PRINT round(nextnode:eta,1) + "    " at(17,3).
+            PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
+            PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
+
+            IF modeBurn AND (nextnode:deltav:mag < 0.001 OR vang(burnVec, nextnode:burnvector) > 90) { BREAK. }
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
             WAIT 1.
             stage.
             WAIT UNTIL stage:ready.
-            SET i TO 1.
             SET maxthrustAtStage TO ship:maxthrustat(0).
       }
-
-      IF desiredInc <> 0 AND desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
-
-      IF airspeed > 100 AND alt:radar > navAlt { SET steeringCtrl TO heading(navYaw, navPitch). }
-      ELSE { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
 
       SET g TO body:mu / body:position:sqrmagnitude.
       SET p TO body:atm:altitudepressure(altitude).
       SET maxAccel TO ship:availablethrust / ship:mass.
       SET maxTwr TO maxAccel / g.
-      SET pitchCraft TO 90 - vang(up:vector, facing:vector).
       SET pitchOrbit TO vang(up:vector, velocity:orbit).
       SET pitchOrbit TO max(pitchOrbit, 90 - pitchOrbit).
 
@@ -206,7 +187,8 @@ UNTIL sas {
       PRINT round(ship:q,3) + "     " at(18,4).
       PRINT round(throttleCtrl,2) + "    " at(18,5).
       PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,7).
-      PRINT round(navPitch - pitchCraft,2) + "    " at(18,8).
+      PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,8).
+      PRINT round(obt:eccentricity,2) + "    " at(18,12).
       PRINT round(desiredApo - apoapsis) + "  " at(18,14).
 
       WAIT 0.
