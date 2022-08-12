@@ -1,4 +1,9 @@
 // https://www.reddit.com/r/Kos/comments/ap7si4/tips_for_more_precise_maneuver_node_execution/
+// Retrograde launch, pitch isn't perfect, but it's working.
+// Add staging protection during launch and circularization.
+// Add multi-stage circularization capability.
+// Add 'balancing' throttle to launch.
+// Apoapsis printing looks like it didn't update after desiredApo + 10000?
 
 PARAMETER desiredApo IS 100000.
 PARAMETER desiredInc IS 0.
@@ -9,6 +14,7 @@ SET steeringmanager:rollcontrolanglerange TO 180.
 SET steeringmanager:rolltorquefactor TO 0.5.
 SET terminal:height TO 20.
 SET terminal:width TO 40.
+IF HASNODE { REMOVE nextnode. }
 
 FUNCTION burn_dV {
     LOCAL r IS body:radius + apoapsis.
@@ -45,13 +51,6 @@ FUNCTION burn_time {
     RETURN (ship:mass - burnMass) / burnFlow.
 }
 
-FUNCTION pitch_angle {
-    LOCAL offsetApo IS desiredApo * (1 + p + ship:q).
-    LOCAL offsetSpeed IS body:atm:height * maxTwr.
-    LOCAL speedOrbit IS sqrt(body:mu / (body:radius + offsetSpeed)).
-    RETURN (sqrt(apoapsis / offsetApo) + sqrt(groundspeed / speedOrbit)) / 2 * 90.
-}
-
 FUNCTION launch_azimuth {
     PARAMETER inc.
 
@@ -66,6 +65,13 @@ FUNCTION launch_azimuth {
     LOCAL vel_e IS vdot(V_corr, heading(90, 0):vector).
     LOCAL az_corr IS arctan2(vel_e, vel_n).
     RETURN az_corr.
+}
+
+FUNCTION pitch_angle {
+    LOCAL offsetApo IS desiredApo * (1 + p + ship:q).
+    LOCAL offsetSpeed IS body:atm:height * maxTwr.
+    LOCAL speedOrbit IS sqrt(body:mu / (body:radius + offsetSpeed)).
+    RETURN (sqrt(apoapsis / offsetApo) + sqrt(groundspeed / speedOrbit)) / 2 * 90.
 }
 
 // PHYSICAL PROPERTIES.
@@ -109,40 +115,35 @@ LOCK throttle TO throttleCtrl.
 
 UNTIL sas {
 
-      IF NOT modeCoast {
+      IF NOT modeCirc {
 
-            SET burnTime TO (desiredApo - apoapsis) / max(0.001, maxAccel) / 2.
+            SET burndV TO burn_dV().
+            SET burnTime TO burndV / max(0.001, maxAccel) / 2.
             SET navPitch TO 90 - min(pitch_angle(), pitchOrbit).
-            SET throttleCtrl TO min(1, burnTime) - ship:q^2.
+            SET pitchOrbit TO vang(up:vector, velocity:orbit).
+            SET pitchOrbit TO max(pitchOrbit, 90 - pitchOrbit).
+            SET throttleCtrl TO 1 - ship:q^2.
 
             IF desiredInc <> 0 AND desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
 
             IF airspeed > 100 AND alt:radar > navAlt { SET steeringCtrl TO heading(navYaw, navPitch). }
             ELSE { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
 
-            IF apoapsis >= desiredApo {
-                  SET modeCoast TO TRUE.
-                  SET throttleCtrl TO 0.
-            }
-
-      } ELSE IF NOT modeCirc  {
-
-            SET burndV TO burn_dV().
-            SET burnTime TO burndV / maxAccel / 2.
-            SET steeringCtrl TO velocity:orbit.
-
             PRINT round(burnTime,2) + "    " at(18,11).
             PRINT round(burndV,2) + "    " at(18,16).
 
-            IF eta:apoapsis < burnTime {
+            IF NOT modeCoast AND apoapsis >= desiredApo {
+                  SET modeCoast TO TRUE.
+                  LOCK throttle TO 0.
+
+            } ELSE IF modeCoast AND eta:apoapsis < burnTime {
                   SET desiredApo TO desiredApo + 10000.
                   SET modeCoast TO FALSE.
+                  LOCK throttle TO throttleCtrl.
 
-            } ELSE IF eta:apoapsis > burnTime AND altitude > body:atm:height {
+            } ELSE IF modeCoast AND eta:apoapsis > burnTime AND altitude > body:atm:height {
                   ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
-                  SET burnVec TO nextnode:burnvector.
                   SET modeCirc TO TRUE.
-                  LOCK throttle TO 0.
             }
 
       } ELSE {
@@ -180,8 +181,6 @@ UNTIL sas {
       SET p TO body:atm:altitudepressure(altitude).
       SET maxAccel TO ship:availablethrust / ship:mass.
       SET maxTwr TO maxAccel / g.
-      SET pitchOrbit TO vang(up:vector, velocity:orbit).
-      SET pitchOrbit TO max(pitchOrbit, 90 - pitchOrbit).
 
       PRINT round(g,2) + "    " at(18,1).
       PRINT round(maxTwr,2) + "    " at(18,2).
