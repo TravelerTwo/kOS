@@ -1,18 +1,17 @@
 // https://www.reddit.com/r/Kos/comments/ap7si4/tips_for_more_precise_maneuver_node_execution/
 // Retrograde launch, pitch isn't perfect, but it's working.
-// Add staging protection during launch and circularization.
+// Add staging protection during circularization.
 // Add multi-stage circularization capability.
 // Add 'balancing' throttle to launch.
-// Apoapsis printing looks like it didn't update after desiredApo + 10000?
 
 PARAMETER desiredApo IS 100000.
 PARAMETER desiredInc IS 0.
 
 CLEARSCREEN.
-SET config:ipu TO 500.
+SET config:ipu TO 600.
 SET steeringmanager:rollcontrolanglerange TO 180.
 SET steeringmanager:rolltorquefactor TO 0.5.
-SET terminal:height TO 20.
+SET terminal:height TO 25.
 SET terminal:width TO 40.
 IF HASNODE { REMOVE nextnode. }
 
@@ -106,6 +105,25 @@ LOCAL steeringCtrl IS lookdirup(facing:vector, facing:topvector).
 LOCAL throttleCtrl IS 1.
 
 PRINT " ".
+PRINT " Local gravity  =".
+PRINT " Local TWR      =".
+PRINT " Pressure (ATM) =".
+PRINT " Pressure (Q)   =".
+PRINT " Throttle       =".
+PRINT " ".
+PRINT " Relative apo   =".
+PRINT " Relative inc   =".
+PRINT " Relative pitch =".
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Burn time     =".
+PRINT " Half time     =".
+PRINT " Node ETA      =".
+PRINT "--------------------------".
+PRINT " ".
+PRINT " Node angle    =".
+PRINT " Node delta-V  =".
+PRINT "--------------------------".
 
 sas OFF.
 gear OFF.
@@ -117,8 +135,6 @@ UNTIL sas {
 
       IF NOT modeCirc {
 
-            SET burndV TO burn_dV().
-            SET burnTime TO burndV / max(0.001, maxAccel) / 2.
             SET navPitch TO 90 - min(pitch_angle(), pitchOrbit).
             SET pitchOrbit TO vang(up:vector, velocity:orbit).
             SET pitchOrbit TO max(pitchOrbit, 90 - pitchOrbit).
@@ -129,28 +145,41 @@ UNTIL sas {
             IF airspeed > 100 AND alt:radar > navAlt { SET steeringCtrl TO heading(navYaw, navPitch). }
             ELSE { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
 
-            PRINT round(burnTime,2) + "    " at(18,11).
-            PRINT round(burndV,2) + "    " at(18,16).
+            PRINT round(p,3) + "     " at(18,3).
+            PRINT round(ship:q,3) + "     " at(18,4).
+            PRINT round(desiredApo - apoapsis) + "  " at(18,7).
+            PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,8).
+            PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,9).
 
             IF NOT modeCoast AND apoapsis >= desiredApo {
+                  SET burndV TO burn_dV().
+                  SET burnTime TO burn_time(burndV).
+                  SET nodeTime TO burn_time(burndV / 2).
                   SET modeCoast TO TRUE.
                   LOCK throttle TO 0.
 
-            } ELSE IF modeCoast AND eta:apoapsis < burnTime {
-                  SET desiredApo TO desiredApo + 10000.
-                  SET modeCoast TO FALSE.
-                  LOCK throttle TO throttleCtrl.
+                  PRINT round(burnTime,1) + "    " at(17,12).
+                  PRINT round(nodeTime,1) + "    " at(17,13).
+                  PRINT round(eta:apoapsis,1) + "    " at(17,14).
+                  PRINT round(burndV,3) + "      " at(17,18).
+
+                  IF eta:apoapsis < burnTime {
+                        SET desiredApo TO desiredApo + 10000.
+                        SET modeCoast TO FALSE.
+                        LOCK throttle TO throttleCtrl.
+                  }
 
             } ELSE IF modeCoast AND eta:apoapsis > burnTime AND altitude > body:atm:height {
-                  ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
+                  SET burndV TO burn_dV().
                   SET modeCirc TO TRUE.
+                  ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
             }
 
       } ELSE {
 
             IF NOT modeBurn AND nextnode:eta <= nodeTime {
-                  SET modeBurn TO TRUE.
                   SET burnVec TO nextnode:burnvector.
+                  SET modeBurn TO TRUE.
                   LOCK throttle TO throttleCtrl.
             }
 
@@ -161,11 +190,11 @@ UNTIL sas {
             IF throttleCtrl < 1 { SET steeringCtrl TO lookdirup(burnVec, facing:topvector).
             } ELSE { SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector). }
 
-            PRINT round(burnTime,1) + "    " at(17,1).
-            PRINT round(nodeTime,1) + "    " at(17,2).
-            PRINT round(nextnode:eta,1) + "    " at(17,3).
-            PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,7).
-            PRINT round(nextnode:deltav:mag,3) + "      " at(17,8).
+            PRINT round(burnTime,1) + "    " at(17,12).
+            PRINT round(nodeTime,1) + "    " at(17,13).
+            PRINT round(nextnode:eta,1) + "    " at(17,14).
+            PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,17).
+            PRINT round(nextnode:deltav:mag,3) + "      " at(17,18).
 
             IF modeBurn AND (nextnode:deltav:mag < 0.001 OR vang(burnVec, nextnode:burnvector) > 90) { BREAK. }
       }
@@ -184,13 +213,7 @@ UNTIL sas {
 
       PRINT round(g,2) + "    " at(18,1).
       PRINT round(maxTwr,2) + "    " at(18,2).
-      PRINT round(p,3) + "     " at(18,3).
-      PRINT round(ship:q,3) + "     " at(18,4).
-      PRINT round(throttleCtrl,2) + "    " at(18,5).
-      PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,7).
-      PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,8).
-      PRINT round(obt:eccentricity,2) + "    " at(18,12).
-      PRINT round(desiredApo - apoapsis) + "  " at(18,14).
+      PRINT round(throttle,2) + "    " at(18,5).
 
       WAIT 0.
 }
