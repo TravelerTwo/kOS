@@ -1,4 +1,5 @@
 // https://www.reddit.com/r/Kos/comments/ap7si4/tips_for_more_precise_maneuver_node_execution/
+// https://github.com/ScranchNew/kOS-Launch-Scripts/blob/master/libraries/DeltaVLib.ks
 // Retrograde launch, pitch isn't perfect, but it's working.
 // Add staging protection during circularization.
 // Add multi-stage circularization capability.
