@@ -1,9 +1,6 @@
-// https://www.reddit.com/r/Kos/comments/ap7si4/tips_for_more_precise_maneuver_node_execution/
-// https://github.com/ScranchNew/kOS-Launch-Scripts/blob/master/libraries/DeltaVLib.ks
 // Retrograde launch, pitch isn't perfect, but it's working.
 // Add staging protection during circularization.
 // Add multi-stage circularization capability.
-// Add 'balancing' throttle to launch.
 
 PARAMETER desiredApo IS 100000.
 PARAMETER desiredInc IS 0.
@@ -71,7 +68,7 @@ FUNCTION pitch_angle {
     LOCAL offsetApo IS desiredApo * (1 + p + ship:q).
     LOCAL offsetSpeed IS body:atm:height * maxTwr.
     LOCAL speedOrbit IS sqrt(body:mu / (body:radius + offsetSpeed)).
-    RETURN (sqrt(apoapsis / offsetApo) + sqrt(groundspeed / speedOrbit)) / 2 * 90.
+    RETURN sqrt((apoapsis / offsetApo + groundspeed / speedOrbit) / 2) * 90.
 }
 
 // PHYSICAL PROPERTIES.
@@ -90,7 +87,7 @@ LOCAL navYaw IS 90.
 LOCAL nodeTime IS 0.
 LOCAL pitchOrbit IS vang(up:vector, velocity:orbit).
 
-LOCAL maxTwr IS maxAccel / g.
+LOCAL maxTwr IS max(0.001, maxAccel / g).
 
 IF abs(desiredInc) > 180 - abs(ship:latitude) { SET desiredInc TO 180. }
 ELSE IF abs(desiredInc) < abs(ship:latitude) { SET desiredInc TO 0. }
@@ -139,7 +136,8 @@ UNTIL sas {
             SET navPitch TO 90 - min(pitch_angle(), pitchOrbit).
             SET pitchOrbit TO vang(up:vector, velocity:orbit).
             SET pitchOrbit TO max(pitchOrbit, 90 - pitchOrbit).
-            SET throttleCtrl TO 1 - ship:q^2.
+            SET throttleCtrl TO (desiredApo - apoapsis) / 1000 / maxTwr.
+            SET throttleCtrl TO CHOOSE 0 IF throttleCtrl <= 0 ELSE max(0.001, min(1, throttleCtrl)) - ship:q^2.
 
             IF desiredInc <> 0 AND desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
 
@@ -149,7 +147,6 @@ UNTIL sas {
             PRINT round(p,3) + "     " at(18,3).
             PRINT round(ship:q,3) + "     " at(18,4).
             PRINT round(desiredApo - apoapsis) + "  " at(18,7).
-            PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,8).
             PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,9).
 
             IF NOT modeCoast AND apoapsis >= desiredApo {
@@ -157,7 +154,6 @@ UNTIL sas {
                   SET burnTime TO burn_time(burndV).
                   SET nodeTime TO burn_time(burndV / 2).
                   SET modeCoast TO TRUE.
-                  LOCK throttle TO 0.
 
                   PRINT round(burnTime,1) + "    " at(17,12).
                   PRINT round(nodeTime,1) + "    " at(17,13).
@@ -167,12 +163,12 @@ UNTIL sas {
                   IF eta:apoapsis < burnTime {
                         SET desiredApo TO desiredApo + 10000.
                         SET modeCoast TO FALSE.
-                        LOCK throttle TO throttleCtrl.
                   }
 
             } ELSE IF modeCoast AND eta:apoapsis > burnTime AND altitude > body:atm:height {
                   SET burndV TO burn_dV().
                   SET modeCirc TO TRUE.
+                  LOCK throttle TO 0.
                   ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
             }
 
@@ -215,6 +211,7 @@ UNTIL sas {
       PRINT round(g,2) + "    " at(18,1).
       PRINT round(maxTwr,2) + "    " at(18,2).
       PRINT round(throttle,2) + "    " at(18,5).
+      PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,8).
 
       WAIT 0.
 }
