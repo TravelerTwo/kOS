@@ -118,15 +118,15 @@ FUNCTION stage_info {
                     IF NOT a { p:shutdown. }
                 }
                 SET section[2] TO section[2] + p:possiblethrustat(0).
-                SET section[3] TO section[3] + p:possiblethrustat(0) / (p:visp * 9.80665).
-                SET section[4] TO section[2] / (section[3] * 9.80665).
+                SET section[3] TO section[3] + p:possiblethrustat(0) / (9.80665 * p:visp).
+                SET section[4] TO section[2] / (9.80665 * section[3]).
             }
             SET m TO m + p:mass.
             WAIT 0.
         }
         SET section[0] TO m.
         SET section[1] TO section[0] - section[1].
-        SET section[5] TO (section[4] * 9.80665) * ln(section[0] / section[1]).
+        SET section[5] TO (9.80665 * section[4]) * ln(section[0] / section[1]).
         list_stages:insert(0, section).
 
         SET i TO i + 1.
@@ -144,6 +144,9 @@ LOCAL maxthrustAtStage IS ship:maxthrustat(0).
 
 LOCAL burnTime IS burnInfo[0].
 LOCAL meanTime IS burnInfo[1].
+
+// LOCAL IS (9.80665 * list_stages[0][4]) * ln(ship:mass / list_stages[0][1]).
+// LOCAL IS (ship:mass - burnMass) / list_stages[0][3].
 
 // SYSTEM CONTROL.
 LOCAL modeBurn IS FALSE.
@@ -178,7 +181,7 @@ UNTIL sas {
             LOCK throttle TO throttleCtrl.
       }
 
-      IF burnInfo[2] = 1 {  // Figure out better way to find stages used.
+      IF burnInfo[2] = 1 {  // Figure out better way to find stages used. // If current_stage_dV < nextnodeLdeltav:mag?
             SET burnInfo TO burn_info(nextnode:deltav:mag).
             SET burnTime TO burnInfo[0].
             SET meanTime TO burnInfo[1].
