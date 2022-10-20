@@ -175,7 +175,7 @@ UNTIL sas {
             WAIT UNTIL stage:ready.
             SET maxthrustAtStage TO ship:maxthrustat(0).
 
-            IF maxthrustAtStage <> 0 {  // Once we have a better way of finding stages used, reduce this?
+            IF maxthrustAtStage <> 0 {
                   SET list_stages TO stage_info().
                   SET burnInfo TO burn_info(nextnode:deltav:mag).
                   SET burnTime TO burnInfo[0].
