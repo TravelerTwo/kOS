@@ -1,6 +1,4 @@
 // Retrograde launch, pitch isn't perfect, but it's working.
-// Add staging protection during circularization.
-// Add multi-stage circularization capability.
 
 PARAMETER desiredApo IS 100000.
 PARAMETER desiredInc IS 0.
@@ -20,32 +18,40 @@ FUNCTION burn_dV {
     RETURN velCirc - velApo.
 }
 
-FUNCTION burn_time {
+FUNCTION burn_info {
     PARAMETER dV.
+    LOCAL i IS 0.
+    LOCAL s IS list_stages.
+    LOCAL burndV IS 0.
+    LOCAL burnTime IS 0.
+    LOCAL checkMean IS TRUE.
+    LOCAL meanTime IS 0.
 
-    LOCAL elist IS LIST().
-    LIST ENGINES IN elist.
+    UNTIL burndV >= dV OR i = s:length {
+        LOCAL stagedV IS s[i][5].
+        LOCAL ve IS 9.80665 * s[i][4].
 
-    LOCAL ispFlow IS 0.
-    LOCAL ispThrust IS 0.
-    LOCAL ispTotal IS 0.
-
-    FOR e IN elist {
-        IF e:ignition {
-            IF e:flameout { e:shutdown(). }
-            ELSE {
-                SET ispFlow TO ispFlow + e:availablethrust / (e:isp * 9.80665).
-                SET ispThrust TO ispThrust + e:availablethrust.
-                SET ispTotal TO ispThrust / (ispFlow * 9.80665).
-            }
+        IF checkMean AND burndV + stagedV >= dV / 2 {
+            LOCAL meanMass IS s[i][0] / constant:e^((dV / 2 - burndV) / ve).
+            SET meanTime TO burnTime + (s[i][0] - meanMass) / s[i][3].
+            SET checkMean TO FALSE.
         }
+
+        IF burndV + stagedV > dV { SET stagedV TO dV - burndV. }
+        LOCAL burnMass IS s[i][0] / constant:e^(stagedV / ve).
+
+        SET burndV TO burndV + stagedV.
+        SET burnTime TO burnTime + (s[i][0] - burnMass) / s[i][3] + 1.6 * i.
+
+        SET i TO i + 1.
         WAIT 0.
     }
 
-    LOCAL ve IS 9.80665 * ispTotal.
-    LOCAL burnFlow IS ship:availablethrust / ve.
-    LOCAL burnMass IS ship:mass / constant():e^(dV / ve).
-    RETURN (ship:mass - burnMass) / burnFlow.
+    IF burndV < dV {
+        PRINT "dV Warning - Abort burn".
+        RETURN list(0,0).
+
+    } ELSE { RETURN list(burnTime, meanTime). }
 }
 
 FUNCTION launch_azimuth {
@@ -71,12 +77,98 @@ FUNCTION pitch_angle {
     RETURN sqrt((apoapsis / offsetApo + groundspeed / speedOrbit) / 2) * 90.
 }
 
+FUNCTION stage_info {
+    LOCAL endpart IS ship:rootpart.
+    LOCAL list_roots IS list().
+    LOCAL list_sections IS list().
+
+    FOR p IN ship:parts {
+        IF p:istype("Engine") AND p:stage > endpart:stage { SET endpart TO p. }
+        WAIT 0.
+    }
+
+    FUNCTION root_search {
+        PARAMETER p.
+        WAIT 0.
+
+        LOCAL add_root IS FALSE.
+
+        IF p:hasparent {
+            IF p:parent:name:contains("EnginePlate") AND NOT p:istype("Engine") { SET add_root TO TRUE. }
+            IF p:parent:istype("Engine") AND p:istype("Decoupler") { SET add_root TO TRUE. }
+
+        } ELSE IF NOT p:hasparent { SET add_root TO TRUE. }
+
+        IF add_root {
+            LOCAL section IS list().
+
+            list_roots:insert(0, p).
+
+            FUNCTION section_search {
+                PARAMETER p.
+                WAIT 0.
+
+                section:add(p).
+
+                IF NOT p:children:empty {
+                    FOR c IN p:children {
+                        IF NOT list_roots:contains(c) { section_search(c). }
+                    }
+                }
+            }
+            section_search(list_roots[0]).
+            list_sections:insert(0, section).
+        }
+        IF p:hasparent { root_search(p:parent). }
+    }
+
+    root_search(endpart).
+
+    LOCAL i IS 0.
+    LOCAL list_stages IS list().
+    LOCAL m IS 0.
+
+    FOR s IN list_sections {
+        LOCAL section IS list(0,0,0,0,0,0). // mass, drymass, thrust, flow, isp, dV
+
+        FOR p IN s {
+            IF p:istype("Engine") AND p:allowshutdown {
+                IF section[1] = 0 {
+                    LOCAL a IS CHOOSE TRUE IF NOT p:ignition ELSE FALSE.
+                    IF a { p:activate. }
+
+                    FOR r IN p:consumedresources:keys {
+                        WAIT 0.
+                        SET section[1] TO section[1] + p:consumedresources[r]:amount * p:consumedresources[r]:density.
+                    }
+                    IF a { p:shutdown. }
+                }
+                SET section[2] TO section[2] + p:possiblethrustat(0).
+                SET section[3] TO section[3] + p:possiblethrustat(0) / (9.80665 * p:visp).
+                SET section[4] TO section[2] / (9.80665 * section[3]).
+            }
+            SET m TO m + p:mass.
+            WAIT 0.
+        }
+        SET section[0] TO m.
+        SET section[1] TO section[0] - section[1].
+        SET section[5] TO (9.80665 * section[4]) * ln(section[0] / section[1]).
+        list_stages:insert(0, section).
+    }
+    RETURN list_stages.
+}
+
+// LISTS.
+LOCAL burnInfo IS list().
+LOCAL list_stages IS list().
+
 // PHYSICAL PROPERTIES.
 LOCAL g IS body:mu / body:position:sqrmagnitude.
 LOCAL p IS body:atm:altitudepressure(altitude).
 
 // VARIABLES.
 LOCAL burndV IS burn_dV().
+LOCAL burnMass IS 0.
 LOCAL burnTime IS 0.
 LOCAL burnVec IS facing:vector.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
@@ -84,8 +176,9 @@ LOCAL maxthrustAtStage IS ship:maxthrustat(0).
 LOCAL navAlt IS 100 + alt:radar.
 LOCAL navPitch IS 90.
 LOCAL navYaw IS 90.
-LOCAL nodeTime IS 0.
 LOCAL pitchOrbit IS vang(up:vector, velocity:orbit).
+LOCAL stagedV IS 0.
+LOCAL ve IS 0.
 
 LOCAL maxTwr IS max(0.001, maxAccel / g).
 
@@ -114,13 +207,14 @@ PRINT " Relative inc   =".
 PRINT " Relative pitch =".
 PRINT "--------------------------".
 PRINT " ".
-PRINT " Burn time     =".
-PRINT " Half time     =".
-PRINT " Node ETA      =".
+PRINT " Burn start     =".
+PRINT " Burn time      =".
+PRINT " Node ETA       =".
 PRINT "--------------------------".
 PRINT " ".
-PRINT " Node angle    =".
-PRINT " Node delta-V  =".
+PRINT " Node angle     =".
+PRINT " Node delta-v   =".
+PRINT " Stage delta-v  =".
 PRINT "--------------------------".
 
 sas OFF.
@@ -140,60 +234,62 @@ UNTIL sas {
             SET throttleCtrl TO CHOOSE 0 IF throttleCtrl <= 0 ELSE max(0.001, min(1, throttleCtrl)) - ship:q^2.
 
             IF desiredInc <> 0 AND desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
-
-            IF airspeed > 100 AND alt:radar > navAlt { SET steeringCtrl TO heading(navYaw, navPitch). }
-            ELSE { SET steeringCtrl TO lookdirup(up:vector, facing:topvector). }
+            SET steeringCtrl TO CHOOSE heading(navYaw, navPitch) IF airspeed > 100 AND alt:radar > navAlt ELSE lookdirup(up:vector, facing:topvector).
 
             PRINT round(p,3) + "     " at(18,3).
             PRINT round(ship:q,3) + "     " at(18,4).
-            PRINT round(desiredApo - apoapsis) + "  " at(18,7).
             PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,9).
 
             IF NOT modeCoast AND apoapsis >= desiredApo {
                   SET burndV TO burn_dV().
-                  SET burnTime TO burn_time(burndV).
-                  SET nodeTime TO burn_time(burndV / 2).
+                  SET burnTime TO burndV / maxAccel.
                   SET modeCoast TO TRUE.
 
-                  PRINT round(burnTime,1) + "    " at(17,12).
-                  PRINT round(nodeTime,1) + "    " at(17,13).
-                  PRINT round(eta:apoapsis,1) + "    " at(17,14).
-                  PRINT round(burndV,3) + "      " at(17,18).
+                  PRINT round(burnTime,1) + "    " at(18,13).
+                  PRINT round(eta:apoapsis,1) + "    " at(18,14).
+                  PRINT round(burndV,3) + "      " at(18,18).
 
                   IF eta:apoapsis < burnTime {
                         SET desiredApo TO desiredApo + 10000.
                         SET modeCoast TO FALSE.
                   }
 
-            } ELSE IF modeCoast AND eta:apoapsis > burnTime AND altitude > body:atm:height {
+            } ELSE IF modeCoast AND altitude > body:atm:height {
+                  SET list_stages TO stage_info().
                   SET burndV TO burn_dV().
+                  SET burnInfo TO burn_info(burndV).
+                  SET burnTime TO burnInfo[0].
                   SET modeCirc TO TRUE.
                   LOCK throttle TO 0.
+                  PRINT round(burnInfo[1],1) + "    " at(18,12).
                   ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
             }
 
       } ELSE {
 
-            IF NOT modeBurn AND nextnode:eta <= nodeTime {
+            IF NOT modeBurn AND nextnode:eta <= burnInfo[1] {
                   SET burnVec TO nextnode:burnvector.
                   SET modeBurn TO TRUE.
                   LOCK throttle TO throttleCtrl.
             }
 
-            SET burnTime TO burn_time(nextnode:deltav:mag).
-            SET nodeTime TO burn_time(nextnode:deltav:mag / 2).
-            SET throttleCtrl TO min(1, burnTime).
+            IF nextnode:deltav:mag < stagedV {
+                  SET burnMass TO ship:mass / constant:e^(nextnode:deltav:mag / ve).
+                  SET burnTime TO (ship:mass - burnMass) / list_stages[0][3].
+                  SET throttleCtrl TO min(1, burnTime).
+            }
 
-            IF throttleCtrl < 1 { SET steeringCtrl TO lookdirup(burnVec, facing:topvector).
-            } ELSE { SET steeringCtrl TO lookdirup(nextnode:burnvector, facing:topvector). }
+            SET ve TO 9.80665 * list_stages[0][4].
+            SET stagedV TO ve * ln(ship:mass / list_stages[0][1]).
+            SET steeringCtrl TO CHOOSE lookdirup(burnVec, facing:topvector) IF throttleCtrl < 1 ELSE lookdirup(nextnode:burnvector, facing:topvector).
 
-            PRINT round(burnTime,1) + "    " at(17,12).
-            PRINT round(nodeTime,1) + "    " at(17,13).
-            PRINT round(nextnode:eta,1) + "    " at(17,14).
-            PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(17,17).
-            PRINT round(nextnode:deltav:mag,3) + "      " at(17,18).
+            PRINT round(burnTime,1) + "    " at(18,13).
+            PRINT round(nextnode:eta,1) + "    " at(18,14).
+            PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(18,17).
+            PRINT round(nextnode:deltav:mag,2) + "    " at(18,18).
+            PRINT round(stagedV,2) + "    " at(18,19).
 
-            IF modeBurn AND (nextnode:deltav:mag < 0.001 OR vang(burnVec, nextnode:burnvector) > 90) { BREAK. }
+            IF modeBurn AND (burnTime < 0.001 OR vang(burnVec, nextnode:burnvector) > 90) { BREAK. }
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
@@ -201,6 +297,12 @@ UNTIL sas {
             stage.
             WAIT UNTIL stage:ready.
             SET maxthrustAtStage TO ship:maxthrustat(0).
+
+            IF modeCirc AND maxthrustAtStage <> 0 {
+                  SET list_stages TO stage_info().
+                  SET burnInfo TO burn_info(burndV).
+                  SET burnTime TO burnInfo[0].
+            }
       }
 
       SET g TO body:mu / body:position:sqrmagnitude.
@@ -211,6 +313,7 @@ UNTIL sas {
       PRINT round(g,2) + "    " at(18,1).
       PRINT round(maxTwr,2) + "    " at(18,2).
       PRINT round(throttle,2) + "    " at(18,5).
+      PRINT round(desiredApo - apoapsis) + "  " at(18,7).
       PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,8).
 
       WAIT 0.
