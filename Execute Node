@@ -33,8 +33,8 @@ FUNCTION burn_info {
     }
 
     IF burndV < dV {
-        PRINT "Not enough delta-v" at(17,11).
-        PRINT "Aborting burn" at(17,12).
+        PRINT "Not enough delta-v".
+        PRINT "Aborting burn".
         RETURN list(0,0).
 
     } ELSE { RETURN list(burnTime, meanTime). }
@@ -122,25 +122,24 @@ FUNCTION stage_info {
 }
 
 // LISTS.
-LOCAL list_stages IS stage_info().
+LOCAL burnInfo IS list().
+LOCAL list_stages IS list().
 
 // VARIABLES.
-LOCAL burnInfo IS burn_info(nextnode:deltav:mag).
+LOCAL burnMass IS 0.
+LOCAL burnTime IS 0.
 LOCAL burnVec IS nextnode:burnvector.
 LOCAL maxthrustAtStage IS ship:maxthrustat(0).
-LOCAL ve IS 9.80665 * list_stages[0][4].
-
-LOCAL burnMass IS ship:mass / constant:e^(nextnode:deltav:mag / ve).
-LOCAL burnTime IS burnInfo[0].
-LOCAL stagedV IS ve * ln(ship:mass / list_stages[0][1]).
+LOCAL stagedV IS 0.
+LOCAL ve IS 0.
 
 // SYSTEM CONTROL.
-LOCAL modeBurn IS CHOOSE FALSE IF burnTime > 0.001 ELSE TRUE.
+LOCAL modeBurn IS FALSE.
 LOCAL steeringCtrl IS lookdirup(nextnode:burnvector, facing:topvector).
 LOCAL throttleCtrl IS 1.
 
 PRINT " ".
-PRINT " Burn start    = " + round(burnInfo[1],1).
+PRINT " Burn start    =".
 PRINT " Burn time     =".
 PRINT " Node ETA      =".
 PRINT "--------------------------".
@@ -154,6 +153,13 @@ rcs OFF.
 sas OFF.
 LOCK steering TO steeringCtrl.
 LOCK throttle TO 0.
+
+SET list_stages TO stage_info().
+SET burnInfo TO burn_info(burndV).
+SET burnTime TO burnInfo[0].
+IF burnTime < 0.001 { SET modeBurn TO TRUE. }
+
+PRINT round(burnInfo[1],1) at(17,1).
 
 UNTIL sas {
 
