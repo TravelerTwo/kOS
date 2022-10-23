@@ -33,7 +33,8 @@ FUNCTION burn_info {
     }
 
     IF burndV < dV {
-        PRINT "dV Warning - Abort burn".
+        PRINT "Not enough delta-v" at(17,11).
+        PRINT "Aborting burn" at(17,12).
         RETURN list(0,0).
 
     } ELSE { RETURN list(burnTime, meanTime). }
