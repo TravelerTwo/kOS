@@ -48,7 +48,8 @@ FUNCTION burn_info {
     }
 
     IF burndV < dV {
-        PRINT "dV Warning - Abort burn".
+        PRINT "Not enough delta-v".
+        PRINT "Aborting burn".
         RETURN list(0,0).
 
     } ELSE { RETURN list(burnTime, meanTime). }
@@ -149,7 +150,7 @@ FUNCTION stage_info {
             }
             SET m TO m + p:mass.
             WAIT 0.
-        }
+        
         SET section[0] TO m.
         SET section[1] TO section[0] - section[1].
         SET section[5] TO (9.80665 * section[4]) * ln(section[0] / section[1]).
