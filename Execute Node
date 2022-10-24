@@ -168,6 +168,7 @@ UNTIL sas {
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
+            SET throttleCtrl TO 0.
             WAIT 1.
             stage.
             WAIT UNTIL stage:ready.
@@ -183,12 +184,12 @@ UNTIL sas {
       IF nextnode:deltav:mag < stagedV {
             SET burnMass TO ship:mass / constant:e^(nextnode:deltav:mag / ve).
             SET burnTime TO (ship:mass - burnMass) / list_stages[0][3].
-            SET throttleCtrl TO min(1, burnTime).
       }
 
       SET ve TO 9.80665 * list_stages[0][4].
       SET stagedV TO ve * ln(ship:mass / list_stages[0][1]).
       SET steeringCtrl TO CHOOSE lookdirup(burnVec, facing:topvector) IF throttleCtrl < 1 ELSE lookdirup(nextnode:burnvector, facing:topvector).
+      SET throttleCtrl TO min(1, burnTime).
 
       PRINT round(burnTime,1) + "    " at(17,2).
       PRINT round(nextnode:eta,1) + "    " at(17,3).
