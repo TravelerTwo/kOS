@@ -20,6 +20,7 @@ FUNCTION burn_info {
             LOCAL meanMass IS s[i][0] / constant:e^((dV / 2 - burndV) / ve).
             SET meanTime TO burnTime + (s[i][0] - meanMass) / s[i][3].
             SET checkMean TO FALSE.
+            PRINT round(meanTime,1) at(17,1).
         }
 
         IF burndV + stagedV > dV { SET stagedV TO dV - burndV. }
@@ -123,7 +124,7 @@ FUNCTION stage_info {
 
 // LISTS.
 LOCAL burnInfo IS list().
-LOCAL list_stages IS list().
+LOCAL list_stages IS stage_info().
 
 // VARIABLES.
 LOCAL burnMass IS 0.
@@ -154,12 +155,9 @@ sas OFF.
 LOCK steering TO steeringCtrl.
 LOCK throttle TO 0.
 
-SET list_stages TO stage_info().
 SET burnInfo TO burn_info(burndV).
 SET burnTime TO burnInfo[0].
 IF burnTime < 0.001 { SET modeBurn TO TRUE. }
-
-PRINT round(burnInfo[1],1) at(17,1).
 
 UNTIL sas {
 
