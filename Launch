@@ -35,6 +35,7 @@ FUNCTION burn_info {
             LOCAL meanMass IS s[i][0] / constant:e^((dV / 2 - burndV) / ve).
             SET meanTime TO burnTime + (s[i][0] - meanMass) / s[i][3].
             SET checkMean TO FALSE.
+            PRINT round(meanTime,1) + "    " at(18,12).
         }
 
         IF burndV + stagedV > dV { SET stagedV TO dV - burndV. }
@@ -150,7 +151,7 @@ FUNCTION stage_info {
             }
             SET m TO m + p:mass.
             WAIT 0.
-        
+        }
         SET section[0] TO m.
         SET section[1] TO section[0] - section[1].
         SET section[5] TO (9.80665 * section[4]) * ln(section[0] / section[1]).
@@ -177,17 +178,10 @@ LOCAL maxthrustAtStage IS ship:maxthrustat(0).
 LOCAL navAlt IS 100 + alt:radar.
 LOCAL navPitch IS 90.
 LOCAL navYaw IS 90.
+LOCAL maxTwr IS 1.
 LOCAL pitchOrbit IS vang(up:vector, velocity:orbit).
 LOCAL stagedV IS 0.
 LOCAL ve IS 0.
-
-LOCAL maxTwr IS max(0.001, maxAccel / g).
-
-IF abs(desiredInc) > 180 - abs(ship:latitude) { SET desiredInc TO 180. }
-ELSE IF abs(desiredInc) < abs(ship:latitude) { SET desiredInc TO 0. }
-
-IF desiredApo <= body:atm:height { SET desiredApo TO body:atm:height + 10000. }
-IF desiredInc = 180 { SET navYaw TO 270. }
 
 // SYSTEM CONTROL.
 LOCAL modeBurn IS FALSE.
@@ -224,6 +218,13 @@ brakes OFF.
 LOCK steering TO steeringCtrl.
 LOCK throttle TO throttleCtrl.
 
+IF desiredApo <= body:atm:height { SET desiredApo TO body:atm:height + 10000. }
+
+IF abs(desiredInc) > 180 - abs(ship:latitude) { SET desiredInc TO 180. }
+ELSE IF abs(desiredInc) < abs(ship:latitude) { SET desiredInc TO 0. }
+
+IF desiredInc = 180 { SET navYaw TO 270. }
+
 UNTIL sas {
 
       IF NOT modeCirc {
@@ -239,7 +240,9 @@ UNTIL sas {
 
             PRINT round(p,3) + "     " at(18,3).
             PRINT round(ship:q,3) + "     " at(18,4).
+            PRINT round(desiredApo - apoapsis) + "  " at(18,7).
             PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,9).
+            PRINT round(eta:apoapsis,1) + "    " at(18,14).
 
             IF NOT modeCoast AND apoapsis >= desiredApo {
                   SET burndV TO burn_dV().
@@ -262,7 +265,7 @@ UNTIL sas {
                   SET burnTime TO burnInfo[0].
                   SET modeCirc TO TRUE.
                   LOCK throttle TO 0.
-                  PRINT round(burnInfo[1],1) + "    " at(18,12).
+                  IF burnTime < 0.001 { SET modeBurn TO TRUE. }
                   ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
             }
 
@@ -277,13 +280,14 @@ UNTIL sas {
             IF nextnode:deltav:mag < stagedV {
                   SET burnMass TO ship:mass / constant:e^(nextnode:deltav:mag / ve).
                   SET burnTime TO (ship:mass - burnMass) / list_stages[0][3].
-                  SET throttleCtrl TO min(1, burnTime).
             }
 
             SET ve TO 9.80665 * list_stages[0][4].
             SET stagedV TO ve * ln(ship:mass / list_stages[0][1]).
-            SET steeringCtrl TO CHOOSE lookdirup(burnVec, facing:topvector) IF throttleCtrl < 1 ELSE lookdirup(nextnode:burnvector, facing:topvector).
+            SET steeringCtrl TO CHOOSE lookdirup(burnVec, facing:topvector) IF throttleCtrl < 1 ELSE lookdirup(nextnode:burnvector, up:vector).
+            SET throttleCtrl TO min(1, burnTime).
 
+            PRINT round(apoapsis - abs(periapsis)) + "  " at(18,7).
             PRINT round(burnTime,1) + "    " at(18,13).
             PRINT round(nextnode:eta,1) + "    " at(18,14).
             PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(18,17).
@@ -294,6 +298,7 @@ UNTIL sas {
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
+            SET throttleCtrl TO 0.
             WAIT 1.
             stage.
             WAIT UNTIL stage:ready.
@@ -314,7 +319,6 @@ UNTIL sas {
       PRINT round(g,2) + "    " at(18,1).
       PRINT round(maxTwr,2) + "    " at(18,2).
       PRINT round(throttle,2) + "    " at(18,5).
-      PRINT round(desiredApo - apoapsis) + "  " at(18,7).
       PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,8).
 
       WAIT 0.
