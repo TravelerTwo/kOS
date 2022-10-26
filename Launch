@@ -233,7 +233,7 @@ UNTIL sas {
             SET pitchOrbit TO vang(up:vector, velocity:orbit).
             SET pitchOrbit TO max(pitchOrbit, 90 - pitchOrbit).
             SET throttleCtrl TO (desiredApo - apoapsis) / 1000 / maxTwr.
-            SET throttleCtrl TO CHOOSE 0 IF throttleCtrl <= 0 ELSE max(0.001, min(1, throttleCtrl)) - ship:q^2.
+            SET throttleCtrl TO CHOOSE max(0.001, min(1, throttleCtrl)) - ship:q^2 IF throttleCtrl > 0 ELSE 0.
 
             IF desiredInc <> 0 AND desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
             SET steeringCtrl TO CHOOSE heading(navYaw, navPitch) IF airspeed > 100 AND alt:radar > navAlt ELSE lookdirup(up:vector, facing:topvector).
@@ -265,7 +265,6 @@ UNTIL sas {
                   SET burnTime TO burnInfo[0].
                   SET modeCirc TO TRUE.
                   LOCK throttle TO 0.
-                  IF burnTime < 0.001 { SET modeBurn TO TRUE. }
                   ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
             }
 
@@ -294,7 +293,7 @@ UNTIL sas {
             PRINT round(nextnode:deltav:mag,2) + "    " at(18,18).
             PRINT round(stagedV,2) + "    " at(18,19).
 
-            IF modeBurn AND (burnTime < 0.001 OR vang(burnVec, nextnode:burnvector) > 90) { BREAK. }
+            IF burnTime < 0.001 OR modeBurn AND vang(burnVec, nextnode:burnvector) > 90 { BREAK. }
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
