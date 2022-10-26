@@ -260,11 +260,13 @@ UNTIL sas {
 
             } ELSE IF modeCoast AND altitude > body:atm:height {
                   SET list_stages TO stage_info().
+                  SET modeCirc TO TRUE.
+                  SET ve TO 9.80665 * list_stages[0][4].
+                  LOCK throttle TO 0.
+
                   SET burndV TO burn_dV().
                   SET burnInfo TO burn_info(burndV).
                   SET burnTime TO burnInfo[0].
-                  SET modeCirc TO TRUE.
-                  LOCK throttle TO 0.
                   ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
             }
 
@@ -281,7 +283,6 @@ UNTIL sas {
                   SET burnTime TO (ship:mass - burnMass) / list_stages[0][3].
             }
 
-            SET ve TO 9.80665 * list_stages[0][4].
             SET stagedV TO ve * ln(ship:mass / list_stages[0][1]).
             SET steeringCtrl TO CHOOSE lookdirup(burnVec, facing:topvector) IF throttleCtrl < 1 ELSE lookdirup(nextnode:burnvector, up:vector).
             SET throttleCtrl TO min(1, burnTime).
@@ -305,6 +306,8 @@ UNTIL sas {
 
             IF modeCirc AND maxthrustAtStage <> 0 {
                   SET list_stages TO stage_info().
+                  SET ve TO 9.80665 * list_stages[0][4].
+
                   SET burnInfo TO burn_info(burndV).
                   SET burnTime TO burnInfo[0].
             }
