@@ -21,30 +21,31 @@ FUNCTION burn_dV {
 FUNCTION burn_info {
     PARAMETER dV.
     LOCAL i IS 0.
-    LOCAL s IS list_stages.
     LOCAL burndV IS 0.
     LOCAL burnTime IS 0.
     LOCAL checkMean IS TRUE.
     LOCAL meanTime IS 0.
 
-    UNTIL burndV >= dV OR i = s:length {
-        LOCAL stagedV IS s[i][5].
-        LOCAL ve IS 9.80665 * s[i][4].
+    FOR s IN list_stages {
+        LOCAL stagedV IS s[5].
+        LOCAL ve IS 9.80665 * s[4].
 
         IF checkMean AND burndV + stagedV >= dV / 2 {
-            LOCAL meanMass IS s[i][0] / constant:e^((dV / 2 - burndV) / ve).
-            SET meanTime TO burnTime + (s[i][0] - meanMass) / s[i][3].
+            LOCAL meanMass IS s[0] / constant:e^((dV / 2 - burndV) / ve).
             SET checkMean TO FALSE.
+            SET meanTime TO burnTime + (s[0] - meanMass) / s[3].
             PRINT round(meanTime,1) + "    " at(18,12).
         }
 
         IF burndV + stagedV > dV { SET stagedV TO dV - burndV. }
-        LOCAL burnMass IS s[i][0] / constant:e^(stagedV / ve).
+        LOCAL burnMass IS s[0] / constant:e^(stagedV / ve).
 
         SET burndV TO burndV + stagedV.
-        SET burnTime TO burnTime + (s[i][0] - burnMass) / s[i][3] + 1.6 * i.
-
+        SET burnTime TO burnTime + (s[0] - burnMass) / s[3] + i.
         SET i TO i + 1.
+
+        IF burndV >= dV { BREAK. }
+
         WAIT 0.
     }
 
@@ -298,11 +299,13 @@ UNTIL sas {
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
+            local t0 is time:seconds.
             SET throttleCtrl TO 0.
-            WAIT 1.
+            WAIT 0.4.
             stage.
             WAIT UNTIL stage:ready.
             SET maxthrustAtStage TO ship:maxthrustat(0).
+            print "1: " + round(time:seconds - t0,4).
 
             IF modeCirc AND maxthrustAtStage <> 0 {
                   SET list_stages TO stage_info().
@@ -310,6 +313,7 @@ UNTIL sas {
 
                   SET burnInfo TO burn_info(burndV).
                   SET burnTime TO burnInfo[0].
+                  print "2: " + round(time:seconds - t0,4).
             }
       }
 
