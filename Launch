@@ -299,13 +299,11 @@ UNTIL sas {
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
-            local t0 is time:seconds.
             SET throttleCtrl TO 0.
             WAIT 0.4.
             stage.
             WAIT UNTIL stage:ready.
             SET maxthrustAtStage TO ship:maxthrustat(0).
-            print "1: " + round(time:seconds - t0,4).
 
             IF modeCirc AND maxthrustAtStage <> 0 {
                   SET list_stages TO stage_info().
@@ -313,7 +311,6 @@ UNTIL sas {
 
                   SET burnInfo TO burn_info(burndV).
                   SET burnTime TO burnInfo[0].
-                  print "2: " + round(time:seconds - t0,4).
             }
       }
 
