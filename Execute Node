@@ -35,8 +35,7 @@ FUNCTION burn_info {
     }
 
     IF burndV < dV {
-        PRINT "Not enough delta-v".
-        PRINT "Aborting burn".
+        PRINT " Insufficient delta-v: " + round(burndV,2).
         RETURN list(0,0).
 
     } ELSE { RETURN list(burnTime, meanTime). }
@@ -46,6 +45,7 @@ FUNCTION stage_info {
     LOCAL endpart IS ship:rootpart.
     LOCAL list_roots IS list().
     LOCAL list_sections IS list().
+    LOCAL t0 IS time:seconds.
 
     FOR p IN ship:parts {
         IF p:istype("Engine") AND p:stage > endpart:stage { SET endpart TO p. }
@@ -120,6 +120,7 @@ FUNCTION stage_info {
         SET section[5] TO (9.80665 * section[4]) * ln(section[0] / section[1]).
         list_stages:insert(0, section).
     }
+    PRINT " Runtime: " + round(time:seconds - t0,2) + "; Stages: " + list_stages:length.
     RETURN list_stages.
 }
 
