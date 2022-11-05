@@ -3,130 +3,12 @@ SET config:ipu TO 400.
 SET terminal:height TO 20.
 SET terminal:width TO 40.
 
-FUNCTION burn_info {
-    PARAMETER dV.
-    LOCAL i IS 0.
-    LOCAL burndV IS 0.
-    LOCAL burnTime IS 0.
-    LOCAL checkMean IS TRUE.
-    LOCAL meanTime IS 0.
-
-    FOR s IN list_stages {
-        LOCAL stagedV IS s[5].
-        LOCAL ve IS 9.80665 * s[4].
-
-        IF checkMean AND burndV + stagedV >= dV / 2 {
-            LOCAL meanMass IS s[0] / constant:e^((dV / 2 - burndV) / ve).
-            SET checkMean TO FALSE.
-            SET meanTime TO burnTime + (s[0] - meanMass) / s[3].
-            PRINT round(meanTime,1) + "    " at(17,1).
-        }
-
-        IF burndV + stagedV > dV { SET stagedV TO dV - burndV. }
-        LOCAL burnMass IS s[0] / constant:e^(stagedV / ve).
-
-        SET burndV TO burndV + stagedV.
-        SET burnTime TO burnTime + (s[0] - burnMass) / s[3] + i.
-        SET i TO i + 1.
-
-        IF burndV >= dV { BREAK. }
-
-        WAIT 0.
-    }
-
-    IF burndV < dV {
-        PRINT " Insufficient delta-v: " + round(burndV,2).
-        RETURN list(0,0).
-
-    } ELSE { RETURN list(burnTime, meanTime). }
-}
-
-FUNCTION stage_info {
-    LOCAL endpart IS ship:rootpart.
-    LOCAL list_roots IS list().
-    LOCAL list_sections IS list().
-    LOCAL t0 IS time:seconds.
-
-    FOR p IN ship:parts {
-        IF p:istype("Engine") AND p:stage > endpart:stage { SET endpart TO p. }
-        WAIT 0.
-    }
-
-    FUNCTION root_search {
-        PARAMETER p.
-        WAIT 0.
-
-        LOCAL add_root IS FALSE.
-
-        IF p:hasparent {
-            IF p:parent:name:contains("EnginePlate") AND NOT p:istype("Engine") { SET add_root TO TRUE. }
-            IF p:parent:istype("Engine") AND p:istype("Decoupler") { SET add_root TO TRUE. }
-
-        } ELSE IF NOT p:hasparent { SET add_root TO TRUE. }
-
-        IF add_root {
-            LOCAL section IS list().
-
-            list_roots:insert(0, p).
-
-            FUNCTION section_search {
-                PARAMETER p.
-                WAIT 0.
-
-                section:add(p).
-
-                IF NOT p:children:empty {
-                    FOR c IN p:children {
-                        IF NOT list_roots:contains(c) { section_search(c). }
-                    }
-                }
-            }
-            section_search(list_roots[0]).
-            list_sections:insert(0, section).
-        }
-        IF p:hasparent { root_search(p:parent). }
-    }
-
-    root_search(endpart).
-
-    LOCAL i IS 0.
-    LOCAL list_stages IS list().
-    LOCAL m IS 0.
-
-    FOR s IN list_sections {
-        LOCAL section IS list(0,0,0,0,0,0). // mass, drymass, thrust, flow, isp, dV
-
-        FOR p IN s {
-            IF p:istype("Engine") AND p:allowshutdown {
-                IF section[1] = 0 {
-                    LOCAL a IS CHOOSE TRUE IF NOT p:ignition ELSE FALSE.
-                    IF a { p:activate. }
-
-                    FOR r IN p:consumedresources:keys {
-                        WAIT 0.
-                        SET section[1] TO section[1] + p:consumedresources[r]:amount * p:consumedresources[r]:density.
-                    }
-                    IF a { p:shutdown. }
-                }
-                SET section[2] TO section[2] + p:possiblethrustat(0).
-                SET section[3] TO section[3] + p:possiblethrustat(0) / (9.80665 * p:visp).
-                SET section[4] TO section[2] / (9.80665 * section[3]).
-            }
-            SET m TO m + p:mass.
-            WAIT 0.
-        }
-        SET section[0] TO m.
-        SET section[1] TO section[0] - section[1].
-        SET section[5] TO (9.80665 * section[4]) * ln(section[0] / section[1]).
-        list_stages:insert(0, section).
-    }
-    PRINT " Runtime: " + round(time:seconds - t0,2) + "; Stages: " + list_stages:length.
-    RETURN list_stages.
-}
+// LIBRARY.
+RUNPATH("0:/lib_info").
 
 // LISTS.
 LOCAL burnInfo IS list().
-LOCAL list_stages IS stage_info().
+LOCAL list_stages IS list().
 
 // VARIABLES.
 LOCAL burnMass IS 0.
@@ -134,7 +16,7 @@ LOCAL burnTime IS 0.
 LOCAL burnVec IS nextnode:burnvector.
 LOCAL maxthrustAtStage IS ship:maxthrustat(0).
 LOCAL stagedV IS 0.
-LOCAL ve IS 9.80665 * list_stages[0][4].
+LOCAL ve IS 0.
 
 // SYSTEM CONTROL.
 LOCAL modeBurn IS FALSE.
@@ -157,8 +39,12 @@ sas OFF.
 LOCK steering TO steeringCtrl.
 LOCK throttle TO 0.
 
-SET burnInfo TO burn_info(nextnode:deltav:mag).
+SET list_stages TO stage_info().
+SET ve TO 9.80665 * list_stages[0][4].
+
+SET burnInfo TO burn_info(nextnode:deltav:mag, list_stages).
 SET burnTime TO burnInfo[0].
+PRINT round(burnInfo[1],1) + "    " at(17,1).
 
 UNTIL sas {
 
@@ -170,8 +56,10 @@ UNTIL sas {
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
             SET throttleCtrl TO 0.
+
             WAIT 0.4.
             stage.
+
             WAIT UNTIL stage:ready.
             SET maxthrustAtStage TO ship:maxthrustat(0).
 
@@ -179,7 +67,7 @@ UNTIL sas {
                   SET list_stages TO stage_info().
                   SET ve TO 9.80665 * list_stages[0][4].
 
-                  SET burnInfo TO burn_info(nextnode:deltav:mag).
+                  SET burnInfo TO burn_info(nextnode:deltav:mag, list_stages).
                   SET burnTime TO burnInfo[0].
             }
       }
