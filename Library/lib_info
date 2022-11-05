@@ -1,12 +1,12 @@
 FUNCTION burn_info {
-    PARAMETER dV.
+    PARAMETER dV, iter.
     LOCAL i IS 0.
     LOCAL burndV IS 0.
     LOCAL burnTime IS 0.
     LOCAL checkMean IS TRUE.
     LOCAL meanTime IS 0.
 
-    FOR s IN list_stages {
+    FOR s IN iter {
         LOCAL stagedV IS s[5].
         LOCAL ve IS 9.80665 * s[4].
 
