@@ -42,7 +42,7 @@ FUNCTION pitch_angle {
 }
 
 // LIBRARY.
-RUNPATH("0:/lib_info").
+IF core:currentvolume:files:keys:contains("lib_info") { RUN ONCE lib_info. } ELSE { RUNONCEPATH("0:/lib_info"). }
 
 // LISTS.
 LOCAL burnInfo IS list().
