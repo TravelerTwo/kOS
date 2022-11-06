@@ -19,13 +19,13 @@ IF task = "circ" {
     SET mnv TO node(time:seconds + eVar, 0, 0, velCirc - velVar).
     ADD mnv.
 
-// } ELSE IF task = "copy" {
-// SWITCH TO 1?
-// copypath("0:/deorbit_burn", "d_b").
-// copypath("0:/exec_node", "e_n").
-// copypath("0:/exec_rsvp", "e_r").
-// copypath("0:/launch", "l").
-// copypath("0:/tasks", "t").
+} ELSE IF task = "copy" {
+    copypath("0:/deorbit_burn", "db").
+    copypath("0:/exec_node", "en").
+    copypath("0:/exec_rsvp", "er").
+    copypath("0:/exec_task", "et").
+    copypath("0:/launch", "l").
+    copypath("0:/lib_info", "lib_info").
 
 } ELSE IF task = "inc" {
 
@@ -74,10 +74,11 @@ IF task = "circ" {
     CLEARSCREEN.
 
     PRINT " Synchronous altitudes".
-    PRINT "    " + round(((body:mu * body:rotationperiod^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
-    PRINT "    " + round(((body:mu * (body:rotationperiod / 2)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
-    PRINT "    " + round(((body:mu * (body:rotationperiod / 4)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
-    PRINT "    " + round(((body:mu * (body:rotationperiod / 8)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT " 1x " + round(((body:mu * body:rotationperiod^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT " 2x " + round(((body:mu * (body:rotationperiod / 2)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT " 4x " + round(((body:mu * (body:rotationperiod / 4)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT " 6x " + round(((body:mu * (body:rotationperiod / 6)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
+    PRINT " 8x " + round(((body:mu * (body:rotationperiod / 8)^2) / (4 * constant:pi^2)) ^ (1 / 3) - body:radius).
     PRINT " ".
     PRINT " Apoapsis:".
     PRINT " Periapsis:".
@@ -86,10 +87,10 @@ IF task = "circ" {
     PRINT " Eccentricity:".
 
     UNTIL NOT sas {
-        PRINT round(apoapsis) + "  " at(11,6).
-        PRINT round(periapsis) + "  " at(12,7).
-        PRINT round(obt:inclination,4) + "      " at(14,9).
-        PRINT round(obt:eccentricity,4) + "      " at(15,10).
+        PRINT round(apoapsis) + "  " at(11,7).
+        PRINT round(periapsis) + "  " at(12,8).
+        PRINT round(obt:inclination,4) + "      " at(14,10).
+        PRINT round(obt:eccentricity,4) + "      " at(15,11).
 
         WAIT 0.
     }
