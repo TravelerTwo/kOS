@@ -53,8 +53,16 @@ FUNCTION stage_info {
         LOCAL add_root IS FALSE.
 
         IF p:hasparent {
-            IF p:parent:name:contains("EnginePlate") AND NOT p:istype("Engine") { SET add_root TO TRUE. }
             IF p:parent:istype("Engine") AND p:istype("Decoupler") { SET add_root TO TRUE. }
+            IF p:parent:name:contains("EnginePlate") AND NOT p:istype("Engine") {
+                FOR c IN p:parent:children {
+                    WAIT 0.
+                    IF c:istype("Engine") {
+                        SET add_root TO TRUE.
+                        BREAK.
+                    }
+                }
+            }
 
         } ELSE IF NOT p:hasparent { SET add_root TO TRUE. }
 
