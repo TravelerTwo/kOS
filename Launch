@@ -1,4 +1,5 @@
 // Retrograde launch, pitch isn't perfect, but it's working.
+// Change throttle balancer to be more like brakes in "Flight".
 
 PARAMETER desiredApo IS 100000.
 PARAMETER desiredInc IS 0.
@@ -81,6 +82,7 @@ PRINT " Pressure (ATM) =".
 PRINT " Pressure (Q)   =".
 PRINT " Throttle       =".
 PRINT " ".
+PRINT " Eccentricity   =".
 PRINT " Relative apo   =".
 PRINT " Relative inc   =".
 PRINT " Relative pitch =".
@@ -124,18 +126,18 @@ UNTIL sas {
 
             PRINT round(p,3) + "     " at(18,3).
             PRINT round(ship:q,3) + "     " at(18,4).
-            PRINT round(desiredApo - apoapsis) + "  " at(18,7).
-            PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,9).
-            PRINT round(eta:apoapsis,1) + "    " at(18,14).
+            PRINT round(desiredApo - apoapsis) + "  " at(18,8).
+            PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,10).
+            PRINT round(eta:apoapsis,1) + "    " at(18,15).
 
             IF NOT modeCoast AND apoapsis >= desiredApo - 1 {
                   SET burndV TO burn_dV().
                   SET burnTime TO burndV / maxAccel.
                   SET modeCoast TO TRUE.
 
-                  PRINT round(burnTime,1) + "    " at(18,13).
-                  PRINT round(eta:apoapsis,1) + "    " at(18,14).
-                  PRINT round(burndV,3) + "      " at(18,18).
+                  PRINT round(burnTime,1) + "    " at(18,14).
+                  PRINT round(eta:apoapsis,1) + "    " at(18,15).
+                  PRINT round(burndV,3) + "      " at(18,19).
 
                   IF eta:apoapsis < burnTime {
                         SET desiredApo TO desiredApo + 10000.
@@ -151,7 +153,7 @@ UNTIL sas {
                   SET burndV TO burn_dV().
                   SET burnInfo TO burn_info(burndV, list_stages).
                   SET burnTime TO burnInfo[0].
-                  PRINT round(burnInfo[1],1) + "    " at(18,12).
+                  PRINT round(burnInfo[1],1) + "    " at(18,13).
                   ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
             }
 
@@ -172,12 +174,12 @@ UNTIL sas {
             SET steeringCtrl TO CHOOSE lookdirup(burnVec, facing:topvector) IF throttleCtrl < 1 ELSE lookdirup(nextnode:burnvector, up:vector).
             SET throttleCtrl TO min(1, burnTime).
 
-            PRINT round(apoapsis - max(0, periapsis)) + "  " at(18,7).
-            PRINT round(burnTime,1) + "    " at(18,13).
-            PRINT round(nextnode:eta,1) + "    " at(18,14).
-            PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(18,17).
-            PRINT round(nextnode:deltav:mag,2) + "    " at(18,18).
-            PRINT round(stagedV,2) + "    " at(18,19).
+            PRINT round(apoapsis - max(0, periapsis)) + "  " at(18,8).
+            PRINT round(burnTime,1) + "    " at(18,14).
+            PRINT round(nextnode:eta,1) + "    " at(18,15).
+            PRINT round(vang(nextnode:burnvector, facing:vector),1) + "    " at(18,18).
+            PRINT round(nextnode:deltav:mag,2) + "    " at(18,19).
+            PRINT round(stagedV,2) + "    " at(18,20).
 
             IF burnTime < 0.001 OR modeBurn AND vang(burnVec, nextnode:burnvector) > 90 { BREAK. }
       }
@@ -208,7 +210,8 @@ UNTIL sas {
       PRINT round(g,2) + "    " at(18,1).
       PRINT round(maxTwr,2) + "    " at(18,2).
       PRINT round(throttle,2) + "    " at(18,5).
-      PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,8).
+      PRINT round(obt:eccentricity,4) + "      " at(18,7).
+      PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,9).
 
       WAIT 0.
 }
