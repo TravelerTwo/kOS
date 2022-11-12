@@ -18,7 +18,7 @@ LOCAL g IS body:mu / body:position:sqrmagnitude.
 LOCAL b IS ship:bounds.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 
-LOCAL burnAccel IS verticalspeed^2 / 2 / (b:bottomaltradar - groundspeed) + g.
+LOCAL burnAccel IS verticalspeed^2 / 2 / b:bottomaltradar + g.
 LOCAL burnThrot IS burnAccel / maxAccel.
 LOCAL navTime IS groundspeed / maxAccel.
 
@@ -32,6 +32,7 @@ PRINT " Local gravity =".
 PRINT " Local TWR     =".
 PRINT " ".
 PRINT " Radar alt     =".
+PRINT " Time to stop  =".
 PRINT "--------------------------".
 PRINT " ".
 PRINT " Burn accel    =".
@@ -39,8 +40,6 @@ PRINT " Burn throt    =".
 PRINT " ".
 PRINT " Groundspeed   =".
 PRINT " Verticalspeed =".
-PRINT " ".
-PRINT " Time to stop  =".
 PRINT "--------------------------".
 
 sas OFF.
@@ -54,37 +53,35 @@ IF body:atm:exists {
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
-      IF verticalspeed > -1 { SET burnAccel TO g. }
-      ELSE { SET burnAccel TO verticalspeed^2 / 2 / b:bottomaltradar + g. }
-
       SET g TO body:mu / body:position:sqrmagnitude.
+      SET burnAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
       SET burnThrot TO burnAccel / maxAccel.
       SET maxAccel TO ship:availablethrust / ship:mass.
       SET navTime TO (verticalspeed + sqrt(max(0, 2 * b:bottomaltradar * max(g, burnAccel * throttle) + verticalspeed^2))) / burnAccel.
       SET steeringCtrl TO lookdirup(up:vector * burnAccel + h_accel(), facing:topvector).
       SET throttleCtrl TO burnThrot.
 
-      IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 250) {
+      IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 500) {
             SET modeBurn TO TRUE.
             LOCK throttle TO throttleCtrl.
 
-      } ELSE IF modeBurn AND (verticalspeed > 0 OR burnThrot < 0.5 AND b:bottomaltradar > 250) {
+      } ELSE IF modeBurn AND (verticalspeed > 0 OR burnThrot < 0.5 AND b:bottomaltradar > 500) {
             SET modeBurn TO FALSE.
             LOCK throttle TO 0.
       }
 
       IF body:atm:exists AND deployChutes AND NOT chutessafe { chutessafe ON. }
 
-      IF NOT gear AND verticalspeed < -1 AND b:bottomaltradar < 250 { gear ON. }
+      IF NOT gear AND verticalspeed < -1 AND b:bottomaltradar < 500 { gear ON. }
 
       PRINT round(g,2) + "    " at(18,1).
       PRINT round(maxAccel / g,2) + "    " at(18,2).
       PRINT round(b:bottomaltradar) + "  " at(18,4).
-      PRINT round(burnAccel,2) + "    " at(18,7).
-      PRINT round(burnThrot,2) + "    " at(18,8).
-      PRINT round(groundspeed,2) + "    " at(18,10).
-      PRINT round(verticalspeed,2) + "    " at(18,11).
-      PRINT round(navTime,2) + "    " at(18,13).
+      PRINT round(navTime,2) + "    " at(18,5).
+      PRINT round(burnAccel,2) + "    " at(18,8).
+      PRINT round(burnThrot,2) + "    " at(18,9).
+      PRINT round(groundspeed,2) + "    " at(18,11).
+      PRINT round(verticalspeed,2) + "    " at(18,12).
 
       WAIT 0.
 }
