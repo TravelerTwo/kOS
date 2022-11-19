@@ -1,4 +1,4 @@
-PARAMETER deployChutes IS FALSE.
+// Bouncy steering near the ground.
 
 CLEARSCREEN.
 SET config:ipu TO 400.
@@ -6,16 +6,25 @@ SET terminal:height TO 20.
 SET terminal:width TO 40.
 
 FUNCTION h_accel {
-    LOCAL v IS vxcl(up:vector, velocity:surface).
-    LOCAL hAccel IS -v / 5.
-    RETURN hAccel:normalized * min(hAccel:mag, burnAccel).
+    LOCAL l IS CHOOSE 0 IF NOT modeBurn ELSE min(5, groundspeed / 5).
+    LOCAL v IS vang(up:vector, -velocity:surface) + l.
+    LOCAL hAccel IS CHOOSE groundspeed / 5 IF verticalspeed > -10 ELSE sqrt((burnAccel / cos(v))^2 - burnAccel^2).
+    // LOCAL hAccel IS CHOOSE 0 IF verticalspeed > -1 ELSE sqrt((burnAccel / cos(v))^2 - burnAccel^2).
+
+    print round(v,2) + "    " at(5,14).
+    print round(burnAccel,2) + "    " at(5,15).
+    print round(burnAccel / cos(v),2) + "    " at(5,16).
+    print round(hAccel,2) + "    " at(5,17).
+    print round(vang(-velocity:surface, facing:vector),2) + "    " at(5,18).
+
+    RETURN vxcl(up:vector, -velocity:surface):normalized * hAccel.
 }
 
 // PHYSICAL PROPERTIES.
+LOCAL b IS ship:bounds.
 LOCAL g IS body:mu / body:position:sqrmagnitude.
 
 // VARIABLES.
-LOCAL b IS ship:bounds.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 
 LOCAL burnAccel IS verticalspeed^2 / 2 / b:bottomaltradar + g.
@@ -41,6 +50,10 @@ PRINT " ".
 PRINT " Groundspeed   =".
 PRINT " Verticalspeed =".
 PRINT "--------------------------".
+PRINT " ".
+PRINT " ".
+PRINT " ".
+PRINT " ".
 
 sas OFF.
 LOCK steering TO steeringCtrl.
@@ -69,8 +82,6 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
             SET modeBurn TO FALSE.
             LOCK throttle TO 0.
       }
-
-      IF body:atm:exists AND deployChutes AND NOT chutessafe { chutessafe ON. }
 
       IF NOT gear AND verticalspeed < -1 AND b:bottomaltradar < 500 { gear ON. }
 
