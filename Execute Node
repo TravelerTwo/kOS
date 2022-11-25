@@ -55,8 +55,6 @@ UNTIL sas {
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
-            SET throttleCtrl TO 0.
-
             WAIT 0.4.
             stage.
 
@@ -64,7 +62,7 @@ UNTIL sas {
             SET maxthrustAtStage TO ship:maxthrustat(0).
 
             IF maxthrustAtStage <> 0 {
-                  SET list_stages TO stage_info().
+                  list_stages:remove(0).
                   SET ve TO 9.80665 * list_stages[0][4].
 
                   SET burnInfo TO burn_info(nextnode:deltav:mag, list_stages).
