@@ -51,20 +51,20 @@ IF body:atm:exists {
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
-// steer toward retrograde without affecting throttle?
-// it still oscillates near the ground.
+// burnThrot is too high with hAccel and too low without hAccel.
+// test burnvAccel / maxAccel / cos(vang(up:vector, -velocity:surface))
+// steering limiter can cause drift because hAccel is ~0.
+// limit maxAngle to <0.9 if not modeBurn and >45° angle
       SET g TO body:mu / body:position:sqrmagnitude.
-      SET burnhAccel TO  min(burnvAccel - g, sqrt((burnvAccel / cos(navPitch))^2 - burnvAccel^2)).
+      SET burnhAccel TO  min(burnvAccel - g + sqrt(groundspeed) / 10, sqrt((burnvAccel / cos(navPitch))^2 - burnvAccel^2)).
       SET burnvAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
-      SET burnThrot TO (burnhAccel + burnvAccel) / maxAccel.
+      SET burnThrot TO burnvAccel / maxAccel / cos(navPitch).
       SET maxAccel TO ship:availablethrust / ship:mass.
-      SET navPitch TO CHOOSE min(maxAngle, vang(up:vector, -velocity:surface)) IF modeBurn ELSE vang(up:vector, -velocity:surface).
+      SET maxAngle TO min(maxAngle, vang(up:vector, -velocity:surface)).
+      SET navPitch TO CHOOSE min(maxAngle, vang(up:vector, -velocity:surface)) IF modeBurn ELSE min(45, vang(up:vector, -velocity:surface)).
       SET navTime TO (verticalspeed + sqrt(max(0, 2 * b:bottomaltradar * max(g, burnvAccel * throttle) + verticalspeed^2))) / burnvAccel.
       SET steeringCtrl TO lookdirup(up:vector * burnvAccel + vxcl(up:vector, -velocity:surface):normalized * burnhAccel, facing:topvector).
       SET throttleCtrl TO burnThrot.
-
-      IF NOT modeBurn { SET maxAngle TO vang(up:vector, -velocity:surface). }
-      // ELSE { SET burnhAccel TO min(burnvAccel - g, burnhAccel). }
 
       IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 500) {
             IF NOT gear { gear ON. }
@@ -80,7 +80,7 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       PRINT round(maxAccel / g,2) + "    " at(18,2).
       PRINT round(b:bottomaltradar) + "  " at(18,4).
       PRINT round(navTime,2) + "    " at(18,5).
-      PRINT round(burnhAccel,2) + "    " at(18,8).
+      PRINT round(burnhAccel,2) + "  " + round(burnvAccel - g,2) + "  " + round(burnvAccel - g + sqrt(groundspeed) / 10,2) + "  " + round(sqrt((burnvAccel / cos(navPitch))^2 - burnvAccel^2),2) + "    " at(18,8).
       PRINT round(burnvAccel,2) + "    " at(18,9).
       PRINT round(burnThrot,2) + "    " at(18,10).
       PRINT round(groundspeed,2) + "    " at(18,12).
