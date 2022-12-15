@@ -1,4 +1,4 @@
-// Bouncy steering near the ground.
+// Make hAccel a bit more aggressive to kill horizontal speed earlier?
 
 CLEARSCREEN.
 SET config:ipu TO 400.
@@ -8,15 +8,16 @@ SET terminal:width TO 40.
 // PHYSICAL PROPERTIES.
 LOCAL b IS ship:bounds.
 LOCAL g IS body:mu / body:position:sqrmagnitude.
+LOCAL v IS vang(up:vector, -velocity:surface).
 
 // VARIABLES.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
-LOCAL maxAngle IS vang(up:vector, -velocity:surface).
+LOCAL maxAngle IS 90.
 LOCAL navPitch IS vang(up:vector, -velocity:surface).
 
 LOCAL burnhAccel IS 0.
 LOCAL burnvAccel IS verticalspeed^2 / 2 / b:bottomaltradar + g.
-LOCAL burnThrot IS (burnhAccel + burnvAccel) / maxAccel.
+LOCAL burnThrot IS burnvAccel / maxAccel.
 LOCAL navTime IS -verticalspeed / maxAccel.
 
 // SYSTEM CONTROL.
@@ -51,23 +52,24 @@ IF body:atm:exists {
 
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
-// burnThrot is too high with hAccel and too low without hAccel.
-// test burnvAccel / maxAccel / cos(vang(up:vector, -velocity:surface))
-// steering limiter can cause drift because hAccel is ~0.
-// limit maxAngle to <0.9 if not modeBurn and >45° angle
       SET g TO body:mu / body:position:sqrmagnitude.
-      SET burnhAccel TO  min(burnvAccel - g + sqrt(groundspeed) / 10, sqrt((burnvAccel / cos(navPitch))^2 - burnvAccel^2)).
+      SET v TO vang(up:vector, -velocity:surface).
+      SET burnhAccel TO sqrt((burnvAccel / cos(navPitch))^2 - burnvAccel^2).
       SET burnvAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
       SET burnThrot TO burnvAccel / maxAccel / cos(navPitch).
       SET maxAccel TO ship:availablethrust / ship:mass.
-      SET maxAngle TO min(maxAngle, vang(up:vector, -velocity:surface)).
-      SET navPitch TO CHOOSE min(maxAngle, vang(up:vector, -velocity:surface)) IF modeBurn ELSE min(45, vang(up:vector, -velocity:surface)).
-      SET navTime TO (verticalspeed + sqrt(max(0, 2 * b:bottomaltradar * max(g, burnvAccel * throttle) + verticalspeed^2))) / burnvAccel.
+      // SET maxAngle TO CHOOSE min(maxAngle, v) IF modeBurn ELSE min(maxAngle, min(v, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85))).
+      // SET maxAngle TO min(maxAngle, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85)).
+      // When to switch off arccos? IF v < 45?
+      SET maxAngle TO min(maxAngle, v).
+      SET navPitch TO max(maxAngle, groundspeed / 100).
+      SET navTime TO (sqrt(max(0, verticalspeed^2 + 2 * g * b:bottomaltradar)) + verticalspeed) / g.
       SET steeringCtrl TO lookdirup(up:vector * burnvAccel + vxcl(up:vector, -velocity:surface):normalized * burnhAccel, facing:topvector).
       SET throttleCtrl TO burnThrot.
 
+      IF NOT gear AND modeBurn AND navTime < 5 { gear ON. }
+
       IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 500) {
-            IF NOT gear { gear ON. }
             SET modeBurn TO TRUE.
             LOCK throttle TO throttleCtrl.
 
@@ -80,7 +82,7 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       PRINT round(maxAccel / g,2) + "    " at(18,2).
       PRINT round(b:bottomaltradar) + "  " at(18,4).
       PRINT round(navTime,2) + "    " at(18,5).
-      PRINT round(burnhAccel,2) + "  " + round(burnvAccel - g,2) + "  " + round(burnvAccel - g + sqrt(groundspeed) / 10,2) + "  " + round(sqrt((burnvAccel / cos(navPitch))^2 - burnvAccel^2),2) + "    " at(18,8).
+      PRINT round(burnhAccel,2) + "    " at(18,8).
       PRINT round(burnvAccel,2) + "    " at(18,9).
       PRINT round(burnThrot,2) + "    " at(18,10).
       PRINT round(groundspeed,2) + "    " at(18,12).
