@@ -115,7 +115,14 @@ FUNCTION stage_info {
                 SET section[4] TO section[2] / (9.80665 * section[3]).
             }
             SET m TO m + p:mass.
-            WAIT 0.
+
+// This checks every part. Can it be changed to check for robotic parts without iterating through modules of every part?
+// IF p:hasmodule("ModuleRoboticServoHinge") { SET m TO m + p:mass. }
+// Could this be adapted to check for "ModuleRobotic"?
+            FOR mod IN p:modules {
+                IF mod:contains("ModuleRobotic") { SET m TO m + p:mass. }   // Required due to half mass bug with robotic parts.
+                WAIT 0.
+            }
         }
         SET section[0] TO m.
         SET section[1] TO section[0] - section[1].
