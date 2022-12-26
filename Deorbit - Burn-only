@@ -1,4 +1,13 @@
 // Make hAccel a bit more aggressive to kill horizontal speed earlier?
+// If descent angle is "too" steep maxAngle can become too small to correct for drift.
+// Set maxAngle to min(v, arccos(burnvAccel / maxAccel) / 0.85)) to keep throttle from starting due to angle?
+
+// SET maxAngle TO CHOOSE min(maxAngle, v) IF modeBurn ELSE min(maxAngle, min(v, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85))).
+// SET maxAngle TO min(maxAngle, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85)).
+// When to switch off arccos? IF v < 45? Stopping altitude (x2)?
+// Between 0.85 and 0.9 maxAngle becomes 0.
+// SET maxAngle TO CHOOSE min(maxAngle, v) IF b:bottomaltradar < 1000 ELSE min(maxAngle, min(v, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85))).
+// SET maxAngle TO CHOOSE min(v, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85)) IF NOT modeBurn AND burnvAccel / maxAccel < 0.85 ELSE min(maxAngle, v).
 
 CLEARSCREEN.
 SET config:ipu TO 400.
@@ -58,9 +67,6 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       SET burnvAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
       SET burnThrot TO burnvAccel / maxAccel / cos(navPitch).
       SET maxAccel TO ship:availablethrust / ship:mass.
-      // SET maxAngle TO CHOOSE min(maxAngle, v) IF modeBurn ELSE min(maxAngle, min(v, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85))).
-      // SET maxAngle TO min(maxAngle, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85)).
-      // When to switch off arccos? IF v < 45?
       SET maxAngle TO min(maxAngle, v).
       SET navPitch TO max(maxAngle, groundspeed / 100).
       SET navTime TO (sqrt(max(0, verticalspeed^2 + 2 * g * b:bottomaltradar)) + verticalspeed) / g.
