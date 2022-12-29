@@ -90,7 +90,7 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       PRINT round(b:bottomaltradar) + "  " at(18,4).
       PRINT round(navTime,2) + "    " at(18,5).
       PRINT round(burnhAccel,2) + "  " + round(maxAngle,2) + "    " at(18,8).
-      PRINT round(burnvAccel,2) + "  " + round(verticalspeed^2 / 2 / burnvAccel * 2) + "    " at(18,9).
+      PRINT round(burnvAccel,2) + "    " at(18,9).
       PRINT round(burnThrot,2) + "    " at(18,10).
       PRINT round(groundspeed,2) + "    " at(18,12).
       PRINT round(verticalspeed,2) + "    " at(18,13).
