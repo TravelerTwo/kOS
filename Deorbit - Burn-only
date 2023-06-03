@@ -60,7 +60,7 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       SET burnvAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
       SET burnThrot TO burnvAccel / maxAccel / cos(navPitch).
       SET maxAccel TO ship:availablethrust / ship:mass.
-      SET maxAngle TO CHOOSE min(maxAngle, srfPitch) IF srfPitch < 45 ELSE min(srfPitch, arccos(min(burnvAccel / maxAccel, 0.85) / 0.85)).
+      SET maxAngle TO min(maxAngle, v).
       SET navPitch TO max(maxAngle, groundspeed / 100).
       SET navTime TO (sqrt(max(0, verticalspeed^2 + 2 * g * b:bottomaltradar)) + verticalspeed) / g.
       SET srfPitch TO vang(up:vector, -velocity:surface).
