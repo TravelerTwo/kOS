@@ -1,39 +1,109 @@
 CLEARSCREEN.
 SET config:ipu TO 400.
-SET terminal:height TO 20.
+SET terminal:height TO 25.
 SET terminal:width TO 40.
 
-FUNCTION pitch_angle {
+FUNCTION deorbit_sites {
+    LOCAL i IS 0.
+    LOCAL list_peaks IS list().
+    LOCAL peak IS ship:geoposition.
+    LOCAL pos IS ship:position.
+    LOCAL scan IS body:geopositionof(pos).
+    LOCAL valley IS ship:geoposition.
+
+    UNTIL i >= eta:periapsis + navTime / 2 {
+        SET pos TO positionat(ship, time:seconds + i) - ship:position.
+        SET scan TO body:geopositionof(pos).
+        SET scan TO latlng(scan:lat, scan:lng - 360 / body:rotationperiod * i). // Compare this with target site to correct normally?
+
+        IF scan:terrainheight < valley:terrainheight { SET valley TO scan. }
+
+        ELSE IF scan:terrainheight > peak:terrainheight { SET peak TO scan. }
+
+        ELSE IF scan:terrainheight < peak:terrainheight AND (scan:position - peak:position):mag > groundspeed * 10 {
+        // Only add peak if:
+        // 1) it is before periapsis orbit altitude is lower than peak:terrainheight
+        // 2) it is after periapsis
+            IF peak:terrainheight < (pos - body:position):mag - body:radius + 250 OR i > eta:periapsis {
+                list_peaks:add(peak).
+                SET navAlt TO max(navAlt, peak:terrainheight + 250).
+                SET peak TO valley.
+            }
+        }
+print round((pos - body:position):mag - body:radius) + "  " at(5,2).
+print round(peak:terrainheight) + "  " at(5,3).
+print round(scan:terrainheight) + "  " at(5,5).
+print round(valley:terrainheight) + "  " at(5,6).
+        SET i TO i + 1.
+        WAIT 0.
+    }
+
+    RETURN list_peaks.
+}
+
+FUNCTION h_accel {
+    LOCAL alt IS (body:radius + altitude) * constant:pi.
+    LOCAL dist IS vang(ship:position - body:position, site:position - body:position) / 180 * alt.
+    LOCAL vel IS velocity:surface.
+    // LOCAL hVec IS groundspeed^2 / 2 / dist * vxcl(up:vector, -vel):normalized.
+    // LOCAL nVec IS vdot(site:position:normalized, vcrs(up:vector, vel)) / 10 * vcrs(up:vector, vel):normalized.
+    // RETURN hVec + nVec.
+    RETURN groundspeed^2 / 2 / dist * vxcl(up:vector, -vel):normalized.
+}
+
+// Final velocity = sqrt(groundspeed^2 - 2 * hAccel * dist)
+// peakTime = (groundspeed - Final velocity) / hAccel
+
+FUNCTION dist_to {
+    LOCAL alt IS (body:radius + altitude) * constant:pi.
+    LOCAL dist IS vang(ship:position - body:position, site:position - body:position) / 180 * alt.
+}
+
+FUNCTION time_to {
+    LOCAL hSpeed IS sqrt(groundspeed^2 - 2 * hAccel * dist).
+    RETURN (groundspeed - hSpeed) / hAccel.
+}
+
+FUNCTION v_accel {
     PARAMETER alt.
 
+// Craft "always" undershoots at the end of burn.
+// Use peakTime instead of navTime?
     LOCAL altError IS alt - altitude.
-    LOCAL navSpeed IS 2 * altError / navTime - verticalspeed.
-
+    // LOCAL altTime IS max(10, min(60, navTime - 10)).
+    LOCAL altTime IS max(10, min(60, peakTime - 10)).
     LOCAL cenAccel IS vxcl(up:vector, velocity:orbit):sqrmagnitude / body:position:mag.
     LOCAL corAccel IS (-2 * vcrs(body:angularvel, velocity:surface)):mag.
-    LOCAL navAccel IS (navSpeed - verticalspeed) / 10.
-    LOCAL vAccel IS g - cenAccel - corAccel + navAccel.
-    
-    RETURN arccos(max(-0.99, min(0.99, vAccel / maxAccel))).
+    // LOCAL navAccel IS ((2 * altError / altTime - verticalspeed) - verticalspeed) / altTime.
+    LOCAL navAccel IS 2 * (altError - verticalspeed * altTime) / altTime^2.
+    LOCAL navLimit IS sqrt(max(0, maxAccel^2 - hAccel:sqrmagnitude)).
+    RETURN max(-navLimit, g - cenAccel - corAccel + navAccel) * up:vector.
 }
 
 // PHYSICAL PROPERTIES.
 LOCAL b IS ship:bounds.
-LOCAL g IS body:mu / body:position:sqrmagnitude.
+LOCAL g IS body:mu / (body:radius + periapsis)^2.
+LOCAL vel IS velocityat(ship, time:seconds + eta:periapsis):surface:mag.
 
 // VARIABLES.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 LOCAL maxAngle IS 90.
-LOCAL nav_alt IS periapsis.
-LOCAL navPitch IS 0.
+// LOCAL navAlt IS periapsis.
+LOCAL navAlt IS ship:geoposition:terrainheight.
+LOCAL peakTime IS eta:periapsis.
+LOCAL vAccel IS g.
 
-LOCAL burnhAccel IS 0.
-LOCAL burnvAccel IS verticalspeed^2 / 2 / altitude + g.
-LOCAL burnThrot IS burnvAccel / maxAccel.
-LOCAL navTime IS groundspeed / maxAccel.
+LOCAL burnAccel IS verticalspeed^2 / 2 / altitude + g.
+LOCAL burnThrot IS burnAccel / maxAccel.
+// LOCAL hAccel IS sqrt(maxAccel^2 - g^2).
+LOCAL hAccel IS maxAccel * 0.8.
+
+LOCAL navPitch IS arctan(vAccel / hAccel).
+LOCAL navTime IS vel / hAccel.
+LOCAL peaks IS deorbit_sites().
+LOCAL site IS peaks[peaks:length - 1].
 
 // SYSTEM CONTROL.
-LOCAL modeApproach IS FALSE.
 LOCAL modeBrake IS TRUE.
 LOCAL modeBurn IS FALSE.
 LOCAL steeringCtrl IS facing:vector.
@@ -43,54 +113,75 @@ PRINT " ".
 PRINT " Local gravity =".
 PRINT " Local TWR     =".
 PRINT " ".
+PRINT " Burn accel    =".
+PRINT " Burn throt    =".
+PRINT " Throttle      =".
+PRINT " ".
 PRINT " Radar alt     =".
-PRINT " Target alt    = " + round(nav_alt).
+PRINT " Target alt    = " + round(navAlt).
 PRINT " Time to stop  =".
 PRINT "--------------------------".
 PRINT " ".
-PRINT " Burn h accel  =".
-PRINT " Burn v accel  =".
-PRINT " Burn throt    =".
+PRINT " h accel       =".
+PRINT " v accel       =".
 PRINT " Pitch angle   =".
 PRINT " ".
 PRINT " Groundspeed   =".
 PRINT " Verticalspeed =".
 PRINT "--------------------------".
 
-WAIT 1.
+print peaks:length.
+
 sas OFF.
 LOCK steering TO steeringCtrl.
+
+local vd_1 is vecdraw(ship:position, peaks[0]:position, red, "", 1, true).
+local vd_2 is vecdraw(ship:position, peaks[0]:position, blue, "", 1, true).
+local vd_3 is vecdraw(ship:position, peaks[0]:position, green, "", 1, true).
+local vd_4 is vecdraw(ship:position, peaks[0]:position, yellow, "", 1, true).
 
 UNTIL sas {
 
       IF modeBrake {
 
-            SET navPitch TO pitch_angle(nav_alt).
-            SET navTime TO groundspeed / maxAccel.
-            SET steeringCtrl TO angleaxis(navPitch, vcrs(velocity:surface, up:vector)) * up:vector.
+            SET hAccel TO h_accel().
+            SET vAccel TO v_accel(navAlt).
+            SET navPitch TO arctan(vAccel:mag / hAccel:mag).
+            SET navTime TO groundspeed / hAccel:mag.
+            SET steeringCtrl TO hAccel + vAccel.
+            SET throttleCtrl TO sqrt(hAccel:sqrmagnitude + vAccel:sqrmagnitude) / maxAccel.
 
-            IF NOT modeApproach AND eta:periapsis < 1 {
-                  SET modeApproach TO TRUE.
+IF vdot(peaks[0]:position:normalized, vxcl(up:vector, srfprograde:vector)) < 0 { peaks:remove(0). Print peaks:length + "  " at(5,20). PRINT round(navAlt) + "  " at(9,18). }
+
+            IF NOT modeBurn AND eta:periapsis < 1 {
+                  SET modeBurn TO TRUE.
                   LOCK throttle TO throttleCtrl.
             }
 
+// Change states more gradually and keep vertical + horizontal throttle control?
+// If site = peaks[0] and navTime < x?
             IF groundspeed < 1 {
                   SET modeBrake TO FALSE.
+                  SET modeBurn TO FALSE.
                   LOCK throttle TO 0.
             }
 
       } ELSE {
 
-            SET burnhAccel TO sqrt((burnvAccel / cos(navPitch))^2 - burnvAccel^2).
+// Change hAccel name here?
+// Steer towards site?
+            SET hAccel TO min(g, sqrt((burnAccel / cos(navPitch))^2 - burnAccel^2)). // hAccel explodes at the beginning of the state without limit.
+            SET hAccel TO hAccel * vxcl(up:vector, -velocity:surface):normalized.
             SET maxAngle TO min(maxAngle, vang(up:vector, -velocity:surface)).
             SET navPitch TO max(maxAngle, groundspeed / 100).
-            SET navTime TO (verticalspeed + sqrt(max(0, 2 * b:bottomaltradar * g + verticalspeed^2))) / g.
-            SET steeringCtrl TO lookdirup(up:vector * burnvAccel + vxcl(up:vector, -velocity:surface):normalized * burnhAccel, facing:topvector).
+            SET navTime TO (verticalspeed + sqrt(max(0, verticalspeed^2 + 2 * g * b:bottomaltradar))) / g.
+            SET steeringCtrl TO lookdirup(burnAccel * up:vector + hAccel, facing:topvector).
             SET throttleCtrl TO burnThrot.
 
             IF NOT gear AND modeBurn AND navTime < 5 { gear ON. }
 
-            IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 500) {
+// Add burnThrot condition to b:bottomaltradar?
+            IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 250) {
                   SET modeBurn TO TRUE.
                   LOCK throttle TO throttleCtrl.
             }
@@ -99,24 +190,33 @@ UNTIL sas {
       }
 
       SET g TO body:mu / body:position:sqrmagnitude.
-      SET burnvAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
-      SET burnThrot TO burnvAccel / maxAccel.
+      SET burnAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
+      SET burnThrot TO burnAccel / maxAccel.
       SET maxAccel TO max(0.0001, ship:availablethrust / ship:mass).
+      SET peakTime TO time_to(peaks[0]).
 
       PRINT round(g,2) + "    " at(17,1).
       PRINT round(maxAccel / g,2) + "    " at(17,2).
-      PRINT round(b:bottomaltradar) + "  " at(17,4).
-      PRINT round(navTime,2) + "    " at(17,6).
-      PRINT round(burnhAccel,2) + "    " at(17,9).
-      PRINT round(burnvAccel,2) + "    " at(17,10).
-      PRINT round(burnThrot,2) + "    " at(17,11).
-      PRINT round(90 - navPitch,2) + "    " at(17,12).
-      PRINT round(groundspeed,2) + "    " at(17,14).
-      PRINT round(verticalspeed,2) + "    " at(17,15).
+      PRINT round(burnAccel,2) + "    " at(17,4).
+      PRINT round(burnThrot,2) + "    " at(17,5).
+      PRINT round(throttleCtrl,2) + "    " at(17,6).
+      PRINT round(b:bottomaltradar) + "  " at(17,8).
+      PRINT round(navTime,2) + "    " at(17,10).
+      PRINT round(hAccel:mag,2) + "    " at(17,13).
+      PRINT round(vAccel:mag,2) + "    " at(17,14).
+      PRINT round(navPitch,2) + "    " at(17,15).
+      PRINT round(groundspeed,2) + "    " at(17,17).
+      PRINT round(verticalspeed,2) + "    " at(17,18).
+
+set vd_1:vec to site:position.
+set vd_2:vec to site:altitudeposition(navAlt).
+set vd_3:vec to peaks[0]:altitudeposition(navAlt).
+set vd_4:vec to hAccel * 10.
 
       WAIT 0.
 }
 
+clearvecdraws().
 SET ship:control:pilotmainthrottle TO 0.
 SET throttleCtrl TO 0.
 UNLOCK ALL.

@@ -1,12 +1,12 @@
 FUNCTION burn_info {
-    PARAMETER dV, iter.
+    PARAMETER dV.
     LOCAL i IS 0.
     LOCAL burndV IS 0.
     LOCAL burnTime IS 0.
     LOCAL checkMean IS TRUE.
     LOCAL meanTime IS 0.
 
-    FOR s IN iter {
+    FOR s IN list_stages {
         LOCAL stagedV IS s[5].
         LOCAL ve IS 9.80665 * s[4].
 
@@ -119,8 +119,8 @@ FUNCTION stage_info {
 // This checks every part. Can it be changed to check for robotic parts without iterating through modules of every part?
 // IF p:hasmodule("ModuleRoboticServoHinge") { SET m TO m + p:mass. }
 // Could this be adapted to check for "ModuleRobotic"?
-            FOR mod IN p:modules {
-                IF mod:contains("ModuleRobotic") { SET m TO m + p:mass. }   // Required due to half mass bug with robotic parts.
+            FOR partmod IN p:modules {
+                IF partmod:contains("ModuleRobotic") { SET m TO m + p:mass. }   // Required due to half mass bug with robotic parts.
                 WAIT 0.
             }
         }
