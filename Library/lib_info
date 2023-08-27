@@ -1,9 +1,52 @@
+// Abbreviation         - lowercase, as few letter as possible, preferably matching SI designation (eg. ve, velocity > vel)
+// Boolean              - boolCase?, returns either TRUE or FALSE
+// Cardinal point       - lowercase_E/N/S/W (eg. vel_E)
+// Function             - lowercase_underscore (eg. pitch_angle)
+// - that returns list  - lowercase_underscore_info (eg. burn_info)
+// - to appreviate      - lowercase_underscore, short and descriptive(eg. dist_to)
+// List                 - camelInfo or lex/list_lowercase (eg. burnInfo, lex_axis)
+// Parameter            - few (<5) letters representing the parameter (eg. apo, char, inc, p)
+// Physical property    - lowercase, as few letter as possible, preferably matching SI designation (eg, b, g, rad)
+// - Adjusted
+// - Second order
+// Relative direction   - down, fore, left, right, star, top, up
+// System control       - modeCamel or camelCtrl (eg. modeBurn, steeringCtrl)
+// Variable             - camelCase
+// - adjusted, corrected- camelCase_corr
+// - based on function  - camelCase, same name as function (eg. pitchAngle)
+// - iterator counter   - i, j, k OR single letter representation (p = part, s = stage, etc.)
+
+// Component    - camelCase (eg. hAccel, vAccel)
+// Geoposition  - G_camelCase (eg. G_site)
+// Keyword      - (eg. burn, Mode, nav)
+// Position     - P_camelCase
+// Target       - T_camelCase (eg. T_apo)
+// Target       - burn/navCase (eg. burnApo, navApo)
+// Vector       - V_camelCase
+// - component  - x/y/z_camelCase
+
+// Acceleration - acc, accel
+// Altitude     - alt
+// Angle        - ang, angle
+// Apoapsis     - apo
+// Distance     - dist
+// Error        - diff, error
+// Limit        - camelCtrl, camelLimit, maxCase, minCase
+// Orbit        - orb
+// Pitch
+// Roll
+// Speed
+// Surface      - srf
+// Time
+// Velocity     - vel
+// Yaw
+
 FUNCTION burn_info {
-    PARAMETER dV.
+    PARAMETER dV, list_stages.
     LOCAL i IS 0.
     LOCAL burndV IS 0.
     LOCAL burnTime IS 0.
-    LOCAL checkMean IS TRUE.
+    LOCAL checkMean IS TRUE.  // Name? (Boolean variable)
     LOCAL meanTime IS 0.
 
     FOR s IN list_stages {
@@ -36,10 +79,13 @@ FUNCTION burn_info {
 }
 
 FUNCTION stage_info {
-    LOCAL endpart IS ship:rootpart.
+    LOCAL endpart IS ship:rootpart. // Name?
+    LOCAL i IS 0.
     LOCAL list_roots IS list().
     LOCAL list_sections IS list().
-    LOCAL t0 IS time:seconds.
+    LOCAL list_stages IS list().
+    LOCAL m IS 0.
+    LOCAL t0 IS time:seconds.       // Name?
 
     FOR p IN ship:parts {
         IF p:istype("Engine") AND p:stage > endpart:stage { SET endpart TO p. }
@@ -50,7 +96,7 @@ FUNCTION stage_info {
         PARAMETER p.
         WAIT 0.
 
-        LOCAL add_root IS FALSE.
+        LOCAL add_root IS FALSE.    // Name? (Boolean variable)
 
         IF p:hasparent {
             IF p:parent:istype("Engine") AND p:istype("Decoupler") { SET add_root TO TRUE. }
@@ -91,17 +137,13 @@ FUNCTION stage_info {
 
     root_search(endpart).
 
-    LOCAL i IS 0.
-    LOCAL list_stages IS list().
-    LOCAL m IS 0.
-
     FOR s IN list_sections {
         LOCAL section IS list(0,0,0,0,0,0). // mass, drymass, thrust, flow, isp, dV
 
         FOR p IN s {
             IF p:istype("Engine") AND p:allowshutdown {
                 IF section[1] = 0 {
-                    LOCAL a IS CHOOSE TRUE IF NOT p:ignition ELSE FALSE.
+                    LOCAL a IS CHOOSE TRUE IF NOT p:ignition ELSE FALSE.  // Name? (Boolean variable)
                     IF a { p:activate. }
 
                     FOR r IN p:consumedresources:keys {
@@ -118,8 +160,8 @@ FUNCTION stage_info {
 
 // This checks every part. Can it be changed to check for robotic parts without iterating through modules of every part?
 // IF p:hasmodule("ModuleRoboticServoHinge") { SET m TO m + p:mass. }
-// Could this be adapted to check for "ModuleRobotic"?
-            FOR partmod IN p:modules {
+// Could p:hasmodule be adapted to only check for "ModuleRobotic"?
+            FOR partmod IN p:modules {  // Name?
                 IF partmod:contains("ModuleRobotic") { SET m TO m + p:mass. }   // Required due to half mass bug with robotic parts.
                 WAIT 0.
             }

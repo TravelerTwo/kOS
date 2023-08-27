@@ -3,6 +3,7 @@
 // Remove peaks that are too close to previous peak?
 // Figure out why vAccel keeps increasing during descent and compensate for it.
 // New names for V_per and T_vec.
+// Pause/abort script if peaks before periapsis are detected?
 
 CLEARSCREEN.
 SET config:ipu TO 2000.
@@ -53,7 +54,7 @@ set vd_3:vec to peak:position.
 
     list_peaks:add(scan).
     SET i TO 0.
-// Slope check before peak.
+
     UNTIL i >= list_peaks:length {
         PRINT "Check: " + round(list_peaks[i]:terrainheight) + "  " at(1,8).
         PRINT "Peaks: " + list_peaks:length + "  " at(1,9).
@@ -70,13 +71,6 @@ set vd_3:vec to peak:position.
         IF iterate { SET i TO i + 1. } ELSE { SET iterate TO TRUE. }
         WAIT 0.
     }
-
-// LOCAL peakDist IS dist_to(list_peaks[0]).
-// LOCAL peakTime IS (groundspeed - sqrt_neg(groundspeed^2 - 2 * hAccel * peakDist)) / hAccel.
-// IF peakTime < eta:periapsis {
-// }
-// Steer to peak-up + max throttle until peaks are cleared
-// Purge and re-run peaks?
 
     SET navAlt TO list_peaks[0]:terrainheight + 250.
     RETURN list_peaks.
@@ -100,51 +94,20 @@ FUNCTION h_accel {
     RETURN acc + vdot(vel, (T_vec * airspeed - V_per * airspeed)) / 10 * vel.
 }
 
-function slope {
-    local vecNorth is vxcl(up:vector, latlng(90, 0):position - ship:position):normalized * 3.
-    local vecEast is vcrs(up:vector, vecNorth):normalized * 3.
+FUNCTION slope_info {
+    PARAMETER pos.
 
-    local a is body:geopositionof(ship:position - vecNorth + vecEast):position - ship:position.
-    local b is body:geopositionof(ship:position - vecNorth - vecEast):position - ship:position.
-    local c is body:geopositionof(ship:position + vecNorth):position - ship:position.
+    LOCAL vecUp IS (pos - body:position):normalized.
+    LOCAL vecNorth IS vxcl(vecUp, latlng(90, 0):position - pos):normalized * 3.
+    LOCAL vecEast IS vcrs(vecUp, vecNorth):normalized * 3.
 
-    return vang(up:vector, vcrs(a - c, b - c):normalized).
+    LOCAL a IS body:geopositionof(pos - vecNorth + vecEast):position - pos.
+    LOCAL b IS body:geopositionof(pos - vecNorth - vecEast):position - pos.
+    LOCAL c IS body:geopositionof(pos + vecNorth):position - pos.
+    LOCAL slope IS vcrs(a - c, b - c).
+
+    RETURN list(vang(vecUp, slope), body:geopositionof(slopeInfo[1]:position + slope:normalized)).
 }
-
-clearscreen.
-
-local slopeInfo is list(90, ship:geoposition).
-local vd_1 is vecdraw(ship:position, ship:position, red, "", 1, true).
-local vd_2 is vecdraw(ship:position, ship:position, blue, "", 1, true).
-local vd_3 is vecdraw(ship:position, ship:position, green, "", 1, true).
-local vd_4 is vecdraw(ship:position, ship:position, yellow, "", 1, true).
-
-function slope_info {
-    parameter pos.
-
-    local vecUp is (pos - body:position):normalized.
-    local vecNorth is vxcl(vecUp, latlng(90, 0):position - geoPos):normalized * 3.
-    local vecEast is vcrs(vecUp, vecNorth):normalized * 3.
-
-    local a is body:geopositionof(pos - vecNorth + vecEast):position - pos.
-    local b is body:geopositionof(pos - vecNorth - vecEast):position - pos.
-    local c is body:geopositionof(pos + vecNorth):position - pos.
-    local slope is vcrs(a - c, b - c).
-
-    set vd_1:vec to a.
-    set vd_2:vec to b.
-    set vd_3:vec to c.
-    set vd_4:vec to vcrs(a - c, b - c):normalized * 3.
-    return list(vang(vecUp, slope), body:geopositionof(slopeInfo[1]:position + slope:normalized)).
-}
-
-until slopeInfo[0] < 5 or not sas {
-    set slopeInfo to slope_info(slopeInfo[1]).
-    print round(slopeInfo[0]) + "  " + round(slopeInfo[1]:distance) + "  " at(5,5).
-    wait 1.
-}
-
-clearvecdraws().
 
 FUNCTION sqrt_neg {
     PARAMETER p.
@@ -164,6 +127,9 @@ FUNCTION v_accel {
 
     RETURN ((navSpeed - verticalspeed) / 10 + g - navLimit) * up:vector.
 }
+
+// LISTS.
+LOCAL slopeInfo IS list(90, ship:geoposition).
 
 // PHYSICAL PROPERTIES.
 LOCAL b IS ship:bounds.
@@ -188,6 +154,7 @@ LOCAL site IS peaks[peaks:length - 1].
 // SYSTEM CONTROL.
 LOCAL modeBrake IS TRUE.
 LOCAL modeBurn IS FALSE.
+LOCAL modeSlope IS FALSE.
 LOCAL steeringCtrl IS facing:vector.
 LOCAL throttleCtrl IS 1.
 
@@ -225,6 +192,7 @@ UNTIL sas {
 
             SET navPitch TO arctan(vAccel:mag / hAccel:mag).
             SET navTime TO groundspeed / hAccel:mag.
+            SET peakDist TO dist_to(peaks[0]).
             SET peakTime TO (groundspeed - sqrt_neg(groundspeed^2 - 2 * hAccel:mag * peakDist)) / hAccel:mag.
             SET steeringCtrl TO hAccel + vAccel.
 
@@ -242,18 +210,32 @@ UNTIL sas {
             IF groundspeed < 1 {
                   SET modeBrake TO FALSE.
                   SET modeBurn TO FALSE.
+                  SET slopeInfo[1] TO site.
                   LOCK throttle TO 0.
             }
 
+      } ELSE IF modeSlope {
+
       } ELSE {
 
-            SET hAccel TO (2 * vxcl(up:vector, site:position) / 10 - vxcl(up:vector, velocity:surface) * 2) / 5.
+            // SET hAccel TO 2 * (vxcl(up:vector, site:position) - vxcl(up:vector, velocity:surface) * sqrt(5)) / 5.
+            // SET hAccel TO (2 * vxcl(up:vector, site:position) / 10 - vxcl(up:vector, velocity:surface) * 2) / 5.
+            // Braking only works if we're maintaining altitude.
+            SET hAccel TO (vxcl(up:vector, site:position) / 5 - vxcl(up:vector, velocity:surface) * 2) / 5.
             SET hAccel:mag TO min(hAccel:mag, vAccel:mag * tan(20)).
             SET vAccel TO burnAccel * up:vector.
-            SET burnAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
+            SET burnAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - navAlt) + g.
+            SET navAlt TO max(1, min(100, peakDist)).
             SET navTime TO (verticalspeed + sqrt_neg(verticalspeed^2 + 2 * g * b:bottomaltradar)) / g.
+            SET peakDist TO dist_to(site).
             SET steeringCtrl TO lookdirup(hAccel + vAccel, facing:topvector).
-            
+
+            IF slopeInfo[0] > 5 {
+                  SET slopeInfo TO slope_info(slopeInfo[1]:position).
+                  SET site TO slopeInfo[1].
+                  PRINT round(slopeInfo[0],1) + "    " at(17,20).
+            }
+
             IF NOT modeBurn AND verticalspeed < -1 AND (throttleCtrl > 0.9 OR navTime < 10) {
                   SET modeBurn TO TRUE.
                   LOCK throttle TO throttleCtrl.
@@ -266,7 +248,6 @@ UNTIL sas {
 
       SET g TO body:mu / body:position:sqrmagnitude.
       SET maxAccel TO max(0.0001, ship:availablethrust / ship:mass).
-      SET peakDist TO dist_to(peaks[0]).
       SET throttleCtrl TO sqrt(hAccel:sqrmagnitude + vAccel:sqrmagnitude) / maxAccel.
 
       PRINT round(g,2) + "    " at(17,1).

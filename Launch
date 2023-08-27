@@ -1,8 +1,5 @@
-// Retrograde launch, pitch isn't perfect, but it's working.
-// Change name of "rad".
-
-PARAMETER desiredApo IS 100000.
-PARAMETER desiredInc IS 0.
+PARAMETER apo IS 100000. // Name?
+PARAMETER inc IS 0.      // Name?
 
 CLEARSCREEN.
 SET config:ipu TO 600.
@@ -14,32 +11,30 @@ IF HASNODE { REMOVE nextnode. }
 
 FUNCTION burn_dV {
     LOCAL rad IS body:radius + apoapsis.
-    LOCAL velApo IS sqrt(body:mu * (2 / rad - 1 / obt:semimajoraxis)).
-    LOCAL velCirc IS sqrt(body:mu / rad).
-    RETURN velCirc - velApo.
+    LOCAL speedApo IS sqrt(body:mu * (2 / rad - 1 / obt:semimajoraxis)).
+    LOCAL speedCirc IS sqrt(body:mu / rad).
+    RETURN speedCirc - speedApo.
 }
 
 FUNCTION launch_azimuth {
     PARAMETER inc.
 
-    LOCAL V_orb IS max(sqrt(body:mu / body:position:mag), velocity:orbit:mag + 1).
-    LOCAL az_orb IS arcsin(cos(inc) / cos(ship:latitude)).
+    LOCAL az_orb IS arcsin(cos(inc) / cos(ship:latitude)).  // Name?
+    LOCAL V_orb IS max(sqrt(body:mu / body:position:mag), velocity:orbit:mag + 1).  // Name?
     IF inc < 0 { SET az_orb TO 180 - az_orb. }
 
-    LOCAL V_star IS heading(az_orb, 0) * v(0, 0, V_orb).
-    LOCAL V_ship_h IS vxcl(up:vector, velocity:orbit).
-    LOCAL V_corr IS V_star - V_ship_h.
-    LOCAL vel_n IS vdot(V_corr, north:vector).
-    LOCAL vel_e IS vdot(V_corr, heading(90, 0):vector).
-    LOCAL az_corr IS arctan2(vel_e, vel_n).
-    RETURN az_corr.
+    LOCAL V_corr IS heading(az_orb, 0) * v(0, 0, V_orb) - vxcl(up:vector, velocity:orbit).
+    LOCAL vel_E IS vdot(V_corr, heading(90, 0):vector). // Name?
+    LOCAL vel_N IS vdot(V_corr, north:vector).          // Name?
+    RETURN arctan2(vel_E, vel_N).
 }
 
 FUNCTION pitch_angle {
-    LOCAL offsetApo IS desiredApo * (1 + p + ship:q).
-    LOCAL offsetSpeed IS body:atm:height * maxTwr.
-    LOCAL speedOrbit IS sqrt(body:mu / (body:radius + offsetSpeed)).
-    RETURN sqrt((apoapsis / offsetApo + groundspeed / speedOrbit) / 2) * 90.
+    LOCAL rad IS body:radius + body:atm:height * maxTwr.
+
+    LOCAL apo_corr IS apo * (1 + p + ship:q).
+    LOCAL speedCirc_corr IS sqrt(body:mu / rad).
+    RETURN sqrt((apoapsis / apo_corr + groundspeed / speedCirc_corr) / 2) * 90.
 }
 
 // LIBRARY.
@@ -47,26 +42,27 @@ IF core:currentvolume:files:keys:contains("lib_info") { RUN ONCE lib_info. } ELS
 
 // LISTS.
 LOCAL burnInfo IS list().
-LOCAL list_stages IS list().
+LOCAL stageInfo IS list().
 
 // PHYSICAL PROPERTIES.
 LOCAL g IS body:mu / body:position:sqrmagnitude.
 LOCAL p IS body:atm:altitudepressure(altitude).
 
 // VARIABLES.
+LOCAL apoDiff IS 0.
 LOCAL burndV IS burn_dV().
 LOCAL burnMass IS 0.
 LOCAL burnTime IS 0.
-LOCAL burnVec IS facing:vector.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
 LOCAL maxthrustAtStage IS ship:maxthrustat(0).
 LOCAL navAlt IS 100 + alt:radar.
 LOCAL navPitch IS 90.
 LOCAL navYaw IS 90.
 LOCAL maxTwr IS 1.
-LOCAL pitchOrbit IS vang(up:vector, velocity:orbit).
+LOCAL pitchOrb IS vang(up:vector, velocity:orbit).
 LOCAL stagedV IS 0.
 LOCAL ve IS 0.
+LOCAL V_burn IS facing:vector.
 
 // SYSTEM CONTROL.
 LOCAL modeBurn IS FALSE.
@@ -104,39 +100,34 @@ brakes OFF.
 LOCK steering TO steeringCtrl.
 LOCK throttle TO throttleCtrl.
 
-IF desiredApo <= body:atm:height { SET desiredApo TO body:atm:height + 10000. }
+IF apo <= body:atm:height { SET apo TO body:atm:height + 10000. }
 
-IF abs(desiredInc) > 180 - abs(ship:latitude) { SET desiredInc TO 180. }
-ELSE IF abs(desiredInc) < abs(ship:latitude) { SET desiredInc TO 0. }
+IF abs(inc) > 180 - abs(ship:latitude) { SET inc TO 180. }
+ELSE IF abs(inc) < abs(ship:latitude) { SET inc TO 0. }
 
-IF desiredInc = 180 { SET navYaw TO 270. }
+IF inc = 180 { SET navYaw TO 270. }
 
 UNTIL sas {
 
       IF NOT modeCirc {
 
-            SET navPitch TO 90 - min(pitch_angle(), pitchOrbit).
-            SET pitchOrbit TO vang(up:vector, velocity:orbit).
-            SET pitchOrbit TO max(pitchOrbit, 90 - pitchOrbit).
-            // SET throttleCtrl TO max(0.66, min(1, 60 - eta:apoapsis)) - ship:q^2.
-            // IF maxAccel > 0 { SET throttleCtrl TO min(1, (desiredApo - apoapsis) / 10 / maxAccel) - ship:q^2. }
-            // IF maxAccel > 0 { SET throttleCtrl TO max(min(0.33, (desiredApo - apoapsis) / 10 / maxAccel), min(1, 60 - eta:apoapsis)) - ship:q^2. }
+            SET apoDiff TO apo - apoapsis.
+            SET navPitch TO min(navPitch, 90 - min(pitch_angle(), pitchOrb)).
+            SET pitchOrb TO vang(up:vector, velocity:orbit).
+            SET pitchOrb TO max(pitchOrb, 90 - pitchOrb).
+            SET throttleCtrl TO 2 * apoDiff / (2 * velocity:orbit:mag + maxAccel).
+            SET throttleCtrl TO max(0.05, min(1, throttleCtrl)) - ship:q^2.
 
-// IF maxAccel > 0 { SET maxThrot TO (desiredApo - apoapsis) / 10 / maxAccel. }
-// SET minThrot TO 60 * obt:eccentricity + 10 - eta:apoapsis.
-// SET throttleCtrl TO max(min(0.33, maxThrot), min(1, minThrot)) - ship:q^2.
-// SET throttleCtrl TO max(maxThrot, min(1, minThrot)) - ship:q^2.
-
-            IF desiredInc <> 0 AND desiredInc <> 180 { SET navYaw TO launch_azimuth(desiredInc). }
+            IF inc <> 0 AND inc <> 180 { SET navYaw TO launch_azimuth(inc). }
             SET steeringCtrl TO CHOOSE heading(navYaw, navPitch) IF airspeed > 100 AND alt:radar > navAlt ELSE lookdirup(up:vector, facing:topvector).
 
             PRINT round(p,3) + "     " at(18,3).
             PRINT round(ship:q,3) + "     " at(18,4).
-            PRINT round(desiredApo - apoapsis) + "  " at(18,8).
+            PRINT round(apoDiff) + "  " at(18,8).
             PRINT round(navPitch - (90 - vang(up:vector, facing:vector)),2) + "    " at(18,10).
             PRINT round(eta:apoapsis,1) + "    " at(18,15).
 
-            IF NOT modeCoast AND apoapsis >= desiredApo - 1 {
+            IF NOT modeCoast AND apoapsis >= apo - 1 {
                   SET burndV TO burn_dV().
                   SET burnTime TO burndV / maxAccel.
                   SET modeCoast TO TRUE.
@@ -147,18 +138,18 @@ UNTIL sas {
                   PRINT round(burndV,3) + "      " at(18,19).
 
                   IF eta:apoapsis < burnTime {
-                        SET desiredApo TO desiredApo + 10000.
+                        SET apo TO apo + 10000.
                         SET modeCoast TO FALSE.
                         LOCK throttle TO throttleCtrl.
                   }
 
             } ELSE IF modeCoast AND altitude > body:atm:height {
-                  SET list_stages TO stage_info().
                   SET modeCirc TO TRUE.
-                  SET ve TO 9.80665 * list_stages[0][4].
+                  SET stageInfo TO stage_info().
+                  SET ve TO 9.80665 * stageInfo[0][4].
 
                   SET burndV TO burn_dV().
-                  SET burnInfo TO burn_info(burndV, list_stages).
+                  SET burnInfo TO burn_info(burndV, stageInfo).
                   SET burnTime TO burnInfo[0].
                   PRINT round(burnInfo[1],1) + "    " at(18,13).
                   ADD node(time:seconds + eta:apoapsis, 0, 0, burndV).
@@ -167,18 +158,18 @@ UNTIL sas {
       } ELSE {
 
             IF NOT modeBurn AND nextnode:eta <= burnInfo[1] {
-                  SET burnVec TO nextnode:burnvector.
+                  SET V_burn TO nextnode:burnvector.
                   SET modeBurn TO TRUE.
                   LOCK throttle TO throttleCtrl.
             }
 
             IF nextnode:deltav:mag < stagedV {
                   SET burnMass TO ship:mass / constant:e^(nextnode:deltav:mag / ve).
-                  SET burnTime TO (ship:mass - burnMass) / list_stages[0][3].
+                  SET burnTime TO (ship:mass - burnMass) / stageInfo[0][3].
             }
 
-            SET stagedV TO ve * ln(ship:mass / list_stages[0][1]).
-            SET steeringCtrl TO CHOOSE lookdirup(burnVec, facing:topvector) IF throttleCtrl < 1 ELSE lookdirup(nextnode:burnvector, up:vector).
+            SET stagedV TO ve * ln(ship:mass / stageInfo[0][1]).
+            SET steeringCtrl TO CHOOSE lookdirup(V_burn, facing:topvector) IF throttleCtrl < 1 ELSE lookdirup(nextnode:burnvector, up:vector).
             SET throttleCtrl TO min(1, burnTime).
 
             PRINT round(apoapsis - max(0, periapsis)) + "  " at(18,8).
@@ -188,7 +179,7 @@ UNTIL sas {
             PRINT round(nextnode:deltav:mag,2) + "    " at(18,19).
             PRINT round(stagedV,2) + "    " at(18,20).
 
-            IF burnTime < 0.001 OR modeBurn AND vang(burnVec, nextnode:burnvector) > 90 { BREAK. }
+            IF burnTime < 0.001 OR modeBurn AND vang(V_burn, nextnode:burnvector) > 90 { BREAK. }
       }
 
       IF maxthrustAtStage > ship:maxthrustat(0) OR maxthrustAtStage = 0 {
@@ -199,10 +190,10 @@ UNTIL sas {
             SET maxthrustAtStage TO ship:maxthrustat(0).
 
             IF modeCirc AND maxthrustAtStage <> 0 {
-                  list_stages:remove(0).
-                  SET ve TO 9.80665 * list_stages[0][4].
+                  stageInfo:remove(0).
+                  SET ve TO 9.80665 * stageInfo[0][4].
 
-                  SET burnInfo TO burn_info(burndV, list_stages).
+                  SET burnInfo TO burn_info(burndV, stageInfo).
                   SET burnTime TO burnInfo[0].
             }
       }
@@ -216,7 +207,7 @@ UNTIL sas {
       PRINT round(maxTwr,2) + "    " at(18,2).
       PRINT round(throttle,2) + "    " at(18,5).
       PRINT round(obt:eccentricity,4) + "      " at(18,7).
-      PRINT round(abs(desiredInc) - obt:inclination,2) + "    " at(18,9).
+      PRINT round(abs(inc) - obt:inclination,2) + "    " at(18,9).
 
       WAIT 0.
 }
