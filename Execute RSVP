@@ -10,17 +10,17 @@ SET terminal:height TO 25.
 SET terminal:width TO 50.
 
 FUNCTION new_param {
-    LOCAL char IS terminal:input:getchar().
+    LOCAL chr IS terminal:input:getchar().
 
-    IF char:matchespattern("[a-z0-9]") {
-        SET input TO input + char.
+    IF chr:matchespattern("[a-z0-9]") {
+        SET input TO input + chr.
         PRINT input at(15,n).
 
-    } ELSE IF char = terminal:input:backspace {
+    } ELSE IF chr = terminal:input:backspace {
         SET input TO "".
         PRINT "            " at(15,n).
 
-    } ELSE IF char = terminal:input:enter {
+    } ELSE IF chr = terminal:input:enter {
         IF input <> "" {
             IF i < 2 { SET input TO input:toscalar * m. }
             rsvp_settings:add(options[i], input).

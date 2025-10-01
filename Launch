@@ -1,3 +1,5 @@
+// Deploy fairing if it's (they're) staged and altitude > body:atm:height - 1000
+
 PARAMETER apo IS 100000. // Name?
 PARAMETER inc IS 0.      // Name?
 
@@ -19,13 +21,13 @@ FUNCTION burn_dV {
 FUNCTION launch_azimuth {
     PARAMETER inc.
 
-    LOCAL az_orb IS arcsin(cos(inc) / cos(ship:latitude)).  // Name?
-    LOCAL V_orb IS max(sqrt(body:mu / body:position:mag), velocity:orbit:mag + 1).  // Name?
+    LOCAL az_orb IS arcsin(cos(inc) / cos(ship:latitude)).
+    LOCAL speedOrb IS max(sqrt(body:mu / body:position:mag), velocity:orbit:mag + 1).
     IF inc < 0 { SET az_orb TO 180 - az_orb. }
 
-    LOCAL V_corr IS heading(az_orb, 0) * v(0, 0, V_orb) - vxcl(up:vector, velocity:orbit).
-    LOCAL vel_E IS vdot(V_corr, heading(90, 0):vector). // Name?
-    LOCAL vel_N IS vdot(V_corr, north:vector).          // Name?
+    LOCAL V_corr IS heading(az_orb, 0) * v(0, 0, speedOrb) - vxcl(up:vector, velocity:orbit).
+    LOCAL vel_E IS vdot(V_corr, heading(90, 0):vector).
+    LOCAL vel_N IS vdot(V_corr, north:vector).
     RETURN arctan2(vel_E, vel_N).
 }
 

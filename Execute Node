@@ -8,15 +8,15 @@ IF core:currentvolume:files:keys:contains("lib_info") { RUN ONCE lib_info. } ELS
 
 // LISTS.
 LOCAL burnInfo IS list().
-LOCAL list_stages IS list().
+LOCAL stageInfo IS list().
 
 // VARIABLES.
 LOCAL burnMass IS 0.
 LOCAL burnTime IS 0.
-LOCAL burnVec IS nextnode:burnvector.
 LOCAL maxthrustAtStage IS ship:maxthrustat(0).
 LOCAL stagedV IS 0.
 LOCAL ve IS 0.
+LOCAL V_burn IS nextnode:burnvector.
 
 // SYSTEM CONTROL.
 LOCAL modeBurn IS FALSE.
@@ -39,17 +39,17 @@ sas OFF.
 LOCK steering TO steeringCtrl.
 LOCK throttle TO 0.
 
-SET list_stages TO stage_info().
-SET ve TO 9.80665 * list_stages[0][4].
+SET stageInfo TO stage_info().
+SET ve TO 9.80665 * stageInfo[0][4].
 
-SET burnInfo TO burn_info(nextnode:deltav:mag, list_stages).
+SET burnInfo TO burn_info(nextnode:deltav:mag, stageInfo).
 SET burnTime TO burnInfo[0].
 PRINT round(burnInfo[1],1) + "    " at(17,1).
 
 UNTIL sas {
 
       IF NOT modeBurn AND nextnode:eta <= burnInfo[1] {
-            SET burnVec TO nextnode:burnvector.
+            SET V_burn TO nextnode:burnvector.
             SET modeBurn TO TRUE.
             LOCK throttle TO throttleCtrl.
       }
@@ -62,21 +62,21 @@ UNTIL sas {
             SET maxthrustAtStage TO ship:maxthrustat(0).
 
             IF maxthrustAtStage <> 0 {
-                  list_stages:remove(0).
-                  SET ve TO 9.80665 * list_stages[0][4].
+                  stageInfo:remove(0).
+                  SET ve TO 9.80665 * stageInfo[0][4].
 
-                  SET burnInfo TO burn_info(nextnode:deltav:mag, list_stages).
+                  SET burnInfo TO burn_info(nextnode:deltav:mag, stageInfo).
                   SET burnTime TO burnInfo[0].
             }
       }
 
       IF nextnode:deltav:mag < stagedV {
             SET burnMass TO ship:mass / constant:e^(nextnode:deltav:mag / ve).
-            SET burnTime TO (ship:mass - burnMass) / list_stages[0][3].
+            SET burnTime TO (ship:mass - burnMass) / stageInfo[0][3].
       }
 
-      SET stagedV TO ve * ln(ship:mass / list_stages[0][1]).
-      SET steeringCtrl TO CHOOSE lookdirup(nextnode:burnvector, facing:topvector) IF throttleCtrl >= 1 ELSE lookdirup(burnVec, facing:topvector).
+      SET stagedV TO ve * ln(ship:mass / stageInfo[0][1]).
+      SET steeringCtrl TO CHOOSE lookdirup(nextnode:burnvector, facing:topvector) IF throttleCtrl >= 1 ELSE lookdirup(V_burn, facing:topvector).
       SET throttleCtrl TO min(1, burnTime).
 
       PRINT round(burnTime,1) + "    " at(17,2).
@@ -85,7 +85,7 @@ UNTIL sas {
       PRINT round(nextnode:deltav:mag,2) + "    " at(17,7).
       PRINT round(stagedV,2) + "    " at(17,8).
 
-      IF burnTime < 0.001 OR modeBurn AND vang(burnVec, nextnode:burnvector) > 90 { BREAK. }
+      IF burnTime < 0.001 OR modeBurn AND vang(V_burn, nextnode:burnvector) > 90 { BREAK. }
 
       WAIT 0.
 }

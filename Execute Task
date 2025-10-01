@@ -12,9 +12,9 @@ IF task = "circ" {
         SET eVar TO eta:periapsis.
     }
 
-    LOCAL r IS body:radius + var.
-    LOCAL velCirc IS sqrt(body:mu / r).
-    LOCAL velVar IS sqrt(body:mu * (2 / r - 1 / obt:semimajoraxis)).
+    LOCAL rad IS body:radius + var.
+    LOCAL velCirc IS sqrt(body:mu / rad).
+    LOCAL velVar IS sqrt(body:mu * (2 / rad - 1 / obt:semimajoraxis)).
 
     SET mnv TO node(time:seconds + eVar, 0, 0, velCirc - velVar).
     ADD mnv.
@@ -22,7 +22,6 @@ IF task = "circ" {
 } ELSE IF task = "copy" {
     copypath("0:/deorbit_burn", "db").
     copypath("0:/exec_node", "en").
-    copypath("0:/exec_rsvp", "er").
     copypath("0:/exec_task", "et").
     copypath("0:/launch", "l").
     copypath("0:/lib_info", "lib_info").
@@ -68,6 +67,25 @@ IF task = "circ" {
 
     SET mnv TO node(time:seconds + anEta, 0, -dV, 0).
     ADD mnv.
+
+} ELSE IF task = "phase" {
+
+// Exclude solar system vector.
+// Sign angles.
+
+    CLEARSCREEN.
+
+    LOCAL origin IS body:position.
+
+    PRINT "Origin: " + body:name.
+    PRINT " ".
+    PRINT "Moho:   " + round(vang(origin - sun:position, moho:position - sun:position),2).
+    PRINT "Eve:    " + round(vang(origin - sun:position, eve:position - sun:position),2).
+    PRINT "Kerbin: " + round(vang(origin - sun:position, kerbin:position - sun:position),2).
+    PRINT "Duna:   " + round(vang(origin - sun:position, duna:position - sun:position),2).
+    PRINT "Dres:   " + round(vang(origin - sun:position, dres:position - sun:position),2).
+    PRINT "Jool:   " + round(vang(origin - sun:position, jool:position - sun:position),2).
+    PRINT "Eeloo:  " + round(vang(origin - sun:position, eeloo:position - sun:position),2).
 
 } ELSE IF task = "rel" {
 

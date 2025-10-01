@@ -1,3 +1,46 @@
+// Abbreviation         - lowercase, as few letter as possible, preferably matching SI designation (eg. ve, velocity > vel)
+// Boolean              - boolCase?, returns either TRUE or FALSE
+// Cardinal point       - lowercase_E/N/S/W (eg. vel_E)
+// Function             - lowercase_underscore (eg. pitch_angle)
+// - that returns list  - lowercase_underscore_info (eg. burn_info)
+// - to appreviate      - lowercase_underscore, short and descriptive(eg. dist_to)
+// List                 - camelInfo or lex/list_lowercase (eg. burnInfo, lex_axis)
+// Parameter            - few (<5) letters representing the parameter (eg. apo, char, inc, p)
+// Physical property    - lowercase, as few letter as possible, preferably matching SI designation (eg, b, g, rad)
+// - Adjusted
+// - Second order
+// Relative direction   - down, fore, left, right, star, top, up
+// System control       - modeCamel or camelCtrl (eg. modeBurn, steeringCtrl)
+// Variable             - camelCase
+// - adjusted, corrected- camelCase_corr
+// - based on function  - camelCase, same name as function (eg. pitchAngle)
+// - iterator counter   - i, j, k OR single letter representation (p = part, s = stage, etc.)
+
+// Component    - camelCase (eg. hAccel, vAccel)
+// Geoposition  - G_camelCase (eg. G_site)
+// Keyword      - (eg. burn, Mode, nav)
+// Position     - P_camelCase
+// Target       - T_camelCase (eg. T_apo)
+// Target       - burn/navCase (eg. burnApo, navApo)
+// Vector       - V_camelCase
+// - component  - x/y/z_camelCase
+
+// Acceleration - acc, accel
+// Altitude     - alt
+// Angle        - ang, angle
+// Apoapsis     - apo
+// Distance     - dist
+// Error        - diff, error
+// Limit        - camelCtrl, camelLimit, maxCase, minCase
+// Orbit        - orb
+// Pitch
+// Roll
+// Speed
+// Surface      - srf
+// Time
+// Velocity     - vel
+// Yaw
+
 CLEARSCREEN.
 SET config:ipu TO 600.
 SET terminal:height TO 22.
@@ -8,27 +51,27 @@ IF NOT HASTARGET { PRINT "Select target..." at(0,0). }
 WAIT UNTIL HASTARGET.
 
 FUNCTION new_param {
-    LOCAL char IS terminal:input:getchar().
+    LOCAL chr IS terminal:input:getchar().
 
-    IF list_num:contains(char) {
-        SET input TO input + char.
+    IF list_num:contains(chr) {
+        SET input TO input + chr.
         PRINT input at(15,8).
 
-    } ELSE IF char = terminal:input:backspace {
+    } ELSE IF chr = terminal:input:backspace {
         SET input TO "".
         PRINT "       " at(15,8).
 
-    } ELSE IF char = terminal:input:upcursorone {
+    } ELSE IF chr = terminal:input:upcursorone {
         PRINT "  " at(2,9 + i).
         SET i TO i - 1.
         IF i < 0 { SET i TO 2. }
 
-    } ELSE IF char = terminal:input:downcursorone {
+    } ELSE IF chr = terminal:input:downcursorone {
         PRINT "  " at(2,9 + i).
         SET i TO i + 1.
         IF i > 2 { SET i TO 0. }
 
-    } ELSE IF char = terminal:input:enter {
+    } ELSE IF chr = terminal:input:enter {
         IF input <> "" { SET lex_axis[lex_axis:keys[i]] TO input:toscalar. }
         SET input TO "".
         PRINT "       " at(15,8).
@@ -40,53 +83,36 @@ FUNCTION new_param {
 FUNCTION RCS_output {
     PARAMETER vec.
 
-    IF target:istype("vessel") {
-        SET desiredAng TO target:angularvel - ship:angularvel.
-        SET desiredPos TO target:position.
-        SET desiredVel TO target:velocity:orbit - velocity:orbit.
-
-    } ELSE IF target:istype("part") {
-        SET desiredAng TO target:ship:angularvel - ship:angularvel.
-        SET desiredVel TO target:ship:velocity:orbit - velocity:orbit.
-
-        IF NOT ship:controlpart:targetable { SET desiredPos TO target:nodeposition. }
-        ELSE { SET desiredPos TO target:nodeposition - ship:controlpart:nodeposition. }
-    }
-
     LOCAL RCSAccel IS 1 / ship:mass.
     LOCAL RCSSpeed IS sqrt(max(0, 2 * vec:mag * RCSAccel)).
-    LOCAL RCSVel IS RCSSpeed * vec:normalized.
-    LOCAL diffVel IS RCSVel + desiredVel.
-    LOCAL output IS diffVel / RCSAccel.
+    LOCAL V_RCS IS (V_velocity + RCSSpeed * vec:normalized) / RCSAccel.
 
-    LOCAL x_star IS vdot(facing:starvector, output).
-    LOCAL y_top IS vdot(facing:topvector, output).
-    LOCAL z_fore IS vdot(facing:forevector, output).
+    LOCAL x_RCS IS vdot(facing:starvector, V_RCS).
+    LOCAL y_RCS IS vdot(facing:topvector, V_RCS).
+    LOCAL z_RCS IS vdot(facing:forevector, V_RCS).
 
-    SET ship:control:translation TO v(x_star, y_top, z_fore).
+    SET ship:control:translation TO v(x_RCS, y_RCS, z_RCS).
 }
 
-FUNCTION vdot_d {
-    PARAMETER vec.
-    RETURN vdot(vec, desiredPos).
+FUNCTION dist_info {
+    PARAMETER pos.
+    LOCAL t IS -target:facing.
+    RETURN list(vdot(t:vector, pos), vdot(t:starvector, pos), vdot(t:topvector, pos)).
 }
 
 // LISTS.
+LOCAL distInfo IS list().
 LOCAL lex_axis IS lex("fore", 0, "star", 0, "top", 0).
 LOCAL list_num IS list("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", ".").
 
 // VARIABLES.
-LOCAL dStar IS 0.
-LOCAL dTop IS 0.
-LOCAL dFore IS 0. 
-
-LOCAL desiredAng IS facing:vector.
-LOCAL desiredPos IS facing:vector.
-LOCAL desiredVel IS facing:vector.
-LOCAL offsetFore IS facing:vector.
-LOCAL offsetStar IS facing:vector.
-LOCAL offsetTop IS facing:vector.
-LOCAL offsetPos IS offsetFore + offsetStar + offsetTop.
+LOCAL V_angularVel IS facing:vector.
+LOCAL V_position IS facing:vector.
+LOCAL V_velocity IS facing:vector.
+LOCAL x_position IS facing:vector.
+LOCAL y_position IS facing:vector.
+LOCAL z_position IS facing:vector.
+LOCAL V_position_corr IS x_position + y_position + z_position.
 
 // SYSTEM CONTROL.
 LOCAL modeDock IS FALSE.
@@ -115,39 +141,42 @@ PRINT "--------------------------".
 
 rcs ON.
 sas OFF.
-RCS_output(ship:position).
+// RCS_output(ship:position).
 LOCK steering TO steeringCtrl.
 
 UNTIL NOT HASTARGET OR sas {
 
       IF NOT modeDock {
 
-            SET dFore TO vdot_d(-target:facing:vector).
-            SET dStar TO vdot_d(-target:facing:starvector).
-            SET dTop TO vdot_d(-target:facing:topvector).
-            SET offsetPos TO desiredPos:vec.
-            SET offsetPos:mag TO offsetPos:mag - max(10, min(desiredPos:mag, 150)).
-            SET steeringCtrl TO desiredPos.
+            SET distInfo TO dist_info(V_position).
+            SET V_position TO target:position.
 
-            RCS_output(offsetPos).
+            IF target:istype("vessel") {
+                  SET V_angularVel TO target:angularvel - ship:angularvel.
+                  SET V_velocity TO target:velocity:orbit - velocity:orbit.
+            }
 
-            PRINT round(dFore) + "  " at(15,9).
-            PRINT round(dStar) + "  " at(15,10).
-            PRINT round(dTop) + "  " at(15,11).
+            SET V_position_corr TO V_position:vec.
+            SET V_position_corr:mag TO V_position_corr:mag - max(10, min(V_position:mag, 150)).
+            SET steeringCtrl TO V_position.
 
-            IF desiredVel:mag < 0.02 AND desiredPos:mag < 200 AND rcs {
+            PRINT round(distInfo[0]) + "  " at(15,9).
+            PRINT round(distInfo[1]) + "  " at(15,10).
+            PRINT round(distInfo[2]) + "  " at(15,11).
+
+            IF V_velocity:mag < 0.02 AND V_position:mag < 200 AND rcs {
                   rcs OFF.
                   PRINT "Set control/target ports" at(15,16).
 
-            } ELSE IF desiredVel:mag > 0.2 AND NOT rcs {
+            } ELSE IF V_velocity:mag > 0.2 AND NOT rcs {
                   rcs ON.
                   PRINT "Moving to wait position " at(15,16).
             }
 
             IF target:istype("part") AND ship:controlpart:targetable {
-                  SET lex_axis:star TO dStar.
-                  SET lex_axis:top TO dTop.
-                  SET lex_axis:fore TO dFore.
+                  SET lex_axis:star TO distInfo[0].
+                  SET lex_axis:top TO distInfo[1].
+                  SET lex_axis:fore TO distInfo[2].
                   SET modeDock TO TRUE.
                   rcs ON.
                   PRINT ">>" at(2,9).
@@ -157,14 +186,17 @@ UNTIL NOT HASTARGET OR sas {
 
       } ELSE IF modeDock {
 
-            SET offsetFore TO -target:facing:vector * lex_axis:fore.
-            SET offsetStar TO -target:facing:starvector * lex_axis:star.
-            SET offsetTop TO -target:facing:topvector * lex_axis:top.
-            SET offsetPos TO offsetFore + offsetStar + offsetTop.
+            SET V_angularVel TO target:ship:angularvel - ship:angularvel.
+            SET V_position TO target:nodeposition - ship:controlpart:nodeposition.
+            SET V_velocity TO target:ship:velocity:orbit - velocity:orbit.
+
+            SET x_position TO -target:facing:vector * lex_axis:fore.
+            SET y_position TO -target:facing:starvector * lex_axis:star.
+            SET z_position TO -target:facing:topvector * lex_axis:top.
+            SET V_position_corr TO V_position - (x_position + y_position + z_position).
             SET steeringCtrl TO lookdirup(-target:facing:vector, target:facing:topvector).
 
             IF terminal:input:haschar { new_param(). }
-            RCS_output(desiredPos - offsetPos).
 
             PRINT round(lex_axis:fore,2) + "      " at(15,9).
             PRINT round(lex_axis:star,2) + "      " at(15,10).
@@ -178,12 +210,14 @@ UNTIL NOT HASTARGET OR sas {
             }
       }
 
+      RCS_output(V_position_corr).
+
       PRINT round(vang(facing:vector, -target:facing:vector),2) + "    " at(15,2).
       PRINT round(vang(facing:starvector, -target:facing:starvector),2) + "    " at(15,3).
       PRINT round(vang(facing:topvector, target:facing:topvector),2) + "    " at(15,4).
-      PRINT round(desiredAng:mag * constant:radtodeg,2) + "    " at(15,5).
-      PRINT round(desiredPos:mag) + "  " at(15,14).
-      PRINT round(desiredVel:mag,2) + "    " at(15,15).
+      PRINT round(V_angularVel:mag * constant:radtodeg,2) + "    " at(15,5).
+      PRINT round(V_position:mag) + "  " at(15,14).
+      PRINT round(V_velocity:mag,2) + "    " at(15,15).
 
       WAIT 0.
 }

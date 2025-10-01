@@ -1,12 +1,12 @@
-// Make hAccel a bit more aggressive to kill horizontal speed earlier?
-// Possible to do without changing trajectory?
-// If descent angle is "too" steep maxAngle can become too small to correct for drift.
-// Find a better way to limit maxAngle.
-
 CLEARSCREEN.
-SET config:ipu TO 400.
-SET terminal:height TO 20.
+SET config:ipu TO 2000.
+SET terminal:height TO 30.
 SET terminal:width TO 40.
+
+FUNCTION sqrt_neg {
+    PARAMETER p.
+    RETURN CHOOSE -sqrt(-p) IF p < 0 ELSE sqrt(p).
+}
 
 // PHYSICAL PROPERTIES.
 LOCAL b IS ship:bounds.
@@ -14,13 +14,13 @@ LOCAL g IS body:mu / body:position:sqrmagnitude.
 
 // VARIABLES.
 LOCAL maxAccel IS ship:availablethrust / ship:mass.
-LOCAL maxAngle IS 90.
-LOCAL navPitch IS vang(up:vector, -velocity:surface).
+LOCAL navPitch IS 45.
 LOCAL srfPitch IS vang(up:vector, -velocity:surface).
 
-LOCAL burnhAccel IS 0.
-LOCAL burnvAccel IS verticalspeed^2 / 2 / b:bottomaltradar + g.
-LOCAL burnThrot IS burnvAccel / maxAccel.
+LOCAL hAccel IS facing:vector.
+LOCAL vAccel IS facing:vector.
+LOCAL burnAccel IS verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
+LOCAL burnThrot IS burnAccel / maxAccel.
 LOCAL navTime IS -verticalspeed / maxAccel.
 
 // SYSTEM CONTROL.
@@ -33,12 +33,13 @@ PRINT " Local gravity =".
 PRINT " Local TWR     =".
 PRINT " ".
 PRINT " Radar alt     =".
+PRINT " Throttle      =".
+PRINT " ".
 PRINT " Time to stop  =".
 PRINT "--------------------------".
 PRINT " ".
-PRINT " Burn h accel  =".
-PRINT " Burn v accel  =".
-PRINT " Burn throt    =".
+PRINT " h accel       =".
+PRINT " v accel       =".
 PRINT " ".
 PRINT " Groundspeed   =".
 PRINT " Verticalspeed =".
@@ -56,15 +57,17 @@ IF body:atm:exists {
 UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
 
       SET g TO body:mu / body:position:sqrmagnitude.
-      SET burnhAccel TO sqrt((burnvAccel / cos(navPitch))^2 - burnvAccel^2).
-      SET burnvAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - 1) + g.
-      SET burnThrot TO burnvAccel / maxAccel / cos(navPitch).
+      SET hAccel TO 2 * vxcl(up:vector, -velocity:surface) / max(5, navTime - 5).
+      SET hAccel:mag TO min(hAccel:mag, sqrt_neg((burnAccel / cos(navPitch))^2 - burnAccel^2)).
+      SET vAccel TO burnAccel * up:vector.
+      SET burnAccel TO CHOOSE g IF verticalspeed > -1 ELSE verticalspeed^2 / 2 / (b:bottomaltradar - max(groundspeed, 1)) + g.
+      SET burnThrot TO burnAccel / maxAccel / cos(navPitch).
       SET maxAccel TO ship:availablethrust / ship:mass.
-      SET maxAngle TO min(maxAngle, v).
-      SET navPitch TO max(maxAngle, groundspeed / 100).
-      SET navTime TO (sqrt(max(0, verticalspeed^2 + 2 * g * b:bottomaltradar)) + verticalspeed) / g.
+      SET navPitch TO min(navPitch, srfPitch).
+      SET navTime TO (sqrt_neg(verticalspeed^2 + 2 * g * b:bottomaltradar) + verticalspeed) / g.
       SET srfPitch TO vang(up:vector, -velocity:surface).
-      SET steeringCtrl TO lookdirup(up:vector * burnvAccel + vxcl(up:vector, -velocity:surface):normalized * burnhAccel, facing:topvector).
+      SET steeringCtrl TO CHOOSE hAccel + vAccel IF modeBurn ELSE -velocity:surface.
+      SET steeringCtrl TO lookdirup(steeringCtrl, facing:topvector).
       SET throttleCtrl TO burnThrot.
 
       IF NOT gear AND modeBurn AND navTime < 5 { gear ON. }
@@ -72,6 +75,7 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       IF NOT modeBurn AND verticalspeed < -1 AND (burnThrot > 0.9 OR b:bottomaltradar < 500) {
             SET modeBurn TO TRUE.
             LOCK throttle TO throttleCtrl.
+
 
       } ELSE IF modeBurn AND (verticalspeed > 0 OR burnThrot < 0.5 AND b:bottomaltradar > 500) {
             SET modeBurn TO FALSE.
@@ -81,12 +85,12 @@ UNTIL ship:status = "landed" OR ship:status = "splashed" OR sas {
       PRINT round(g,2) + "    " at(18,1).
       PRINT round(maxAccel / g,2) + "    " at(18,2).
       PRINT round(b:bottomaltradar) + "  " at(18,4).
-      PRINT round(navTime,2) + "    " at(18,5).
-      PRINT round(burnhAccel,2) + "  " + round(maxAngle,2) + "    " at(18,8).
-      PRINT round(burnvAccel,2) + "    " at(18,9).
-      PRINT round(burnThrot,2) + "    " at(18,10).
-      PRINT round(groundspeed,2) + "    " at(18,12).
-      PRINT round(verticalspeed,2) + "    " at(18,13).
+      PRINT round(throttleCtrl,2) + "    " at(18,5).
+      PRINT round(navTime,2) + "    " at(18,7).
+      PRINT round(hAccel:mag,2) + "    " at(18,10).
+      PRINT round(burnAccel,2) + "    " at(18,11).
+      PRINT round(groundspeed,2) + "    " at(18,13).
+      PRINT round(verticalspeed,2) + "    " at(18,14).
 
       WAIT 0.
 }
